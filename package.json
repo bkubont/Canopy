@@ -1,0 +1,12 @@
+{
+  "name": "canopy-tree-work-planner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local-first V1 tree-service project and scheduling web app",
+  "scripts": {
+    "test": "node --check app.js && node --test tests/*.test.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
