@@ -11,7 +11,9 @@
     "test:db": "node scripts/test-db.mjs",
     "test:integration": "node scripts/test-local-supabase.mjs",
     "supabase:start": "node scripts/start-local.mjs",
-    "supabase:functions": "node scripts/start-functions.mjs"
+    "supabase:functions": "node scripts/start-functions.mjs",
+    "build:staging": "node scripts/build-staging.mjs",
+    "test:staging": "npm run build:staging && playwright test tests/browser/staging.spec.cjs"
   },
   "engines": {
     "node": ">=22"

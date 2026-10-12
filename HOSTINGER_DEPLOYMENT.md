@@ -1,5 +1,7 @@
 # Deploying Canopy to Hostinger (static pilot)
 
+For the current private sample-only test artifact, follow [HOSTINGER_STAGING.md](HOSTINGER_STAGING.md). This older pilot guide is not the approved staging deployment procedure.
+
 For Issue #1's separate Supabase cloud foundation, read
 [CLOUD_FOUNDATION.md](docs/CLOUD_FOUNDATION.md). It can use Hostinger Business for
 static HTTPS hosting without a Node/PHP backend. This pilot guide does not deploy
