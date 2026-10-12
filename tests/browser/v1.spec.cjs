@@ -1,0 +1,37 @@
+const { test, expect } = require('@playwright/test');
+
+test('V1 creates related records, keeps phase history, and persists across reload', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Work overview' })).toBeVisible();
+  await page.locator('[data-nav="clients"]').click();
+  await page.getByRole('button', { name: '+ Client', exact: true }).click();
+  await page.getByLabel('Client name').fill('Sample Arbor Client');
+  await page.getByLabel('Property address').fill('10 Sample Street');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Sample Arbor Client', { exact: true })).toBeVisible();
+  await page.locator('[data-nav="projects"]').click();
+  await page.getByRole('button', { name: '+ Project', exact: true }).click();
+  await page.getByLabel('Client', { exact: true }).selectOption({ label: 'Sample Arbor Client' });
+  await page.getByLabel('Project title').fill('Sample Oak Job');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Sample Oak Job', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '+ Visit', exact: true }).click();
+  await page.getByLabel('Start date').fill('2026-10-11');
+  await page.getByLabel('Last date').fill('2026-10-13');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Move stage', exact: true }).click();
+  await page.getByLabel('New status').selectOption('prep');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Daily history', exact: true }).click();
+  await expect(page.locator('.history').filter({ hasText: 'Moved from Scheduled to Prep & Rigging' })).toBeVisible();
+  await expect(page.getByText('Project created', { exact: true })).toBeVisible();
+  await page.reload();
+  await page.locator('[data-nav="projects"]').click();
+  await expect(page.getByText('Sample Oak Job', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Open', exact: true }).click();
+  await page.getByRole('button', { name: 'Schedule', exact: true }).click();
+  await expect(page.getByText('Oct 11, 2026 to Oct 13, 2026', { exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});

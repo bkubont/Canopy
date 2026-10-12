@@ -1,4 +1,4 @@
-name: Canopy V1 checks
+name: Canopy foundation checks
 on:
   push:
     branches: [main]
@@ -16,5 +16,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run V1 tests
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Run core and configuration tests
         run: npm test
+      - name: Test real PostgreSQL authorization policies
+        run: npm run test:db
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify V1 desktop and mobile workflows
+        run: npx playwright test tests/browser/v1.spec.cjs

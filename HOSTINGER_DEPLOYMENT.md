@@ -1,5 +1,10 @@
 # Deploying Canopy to Hostinger (static pilot)
 
+For Issue #1's separate Supabase cloud foundation, read
+[CLOUD_FOUNDATION.md](docs/CLOUD_FOUNDATION.md). It can use Hostinger Business for
+static HTTPS hosting without a Node/PHP backend. This pilot guide does not deploy
+or configure authentication, a shared database, or private photo storage.
+
 **Do not deploy yet if you intend to enter real customer records.** V1 uses IndexedDB local browser storage only, no accounts, no database, and no cloud backups.
 
 ## Before deploying

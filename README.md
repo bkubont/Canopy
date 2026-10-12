@@ -45,6 +45,12 @@ There is no server-based access control, shared crew portal, or automated backup
 
 ## Next production milestone (before relying on it daily)
 
+Issue #1's opt-in authentication/shared-database foundation is under development.
+See [the V1 audit and architecture](docs/ISSUE_1_AUDIT.md) and
+[local cloud setup and review stages](docs/CLOUD_FOUNDATION.md). The separate
+cloud preview uses Supabase; this original V1 entry and its browser data remain
+unchanged. No deployment or merge is authorized by that work.
+
 1. Add real authentication (owner/admin and optional workers), secure password reset, session handling.
 2. Add a hosted relational database with per-user/per-organization authorization enforced server-side.
 3. Store photos in protected object storage; implement safe uploads, file limits, signed URLs, backups.
