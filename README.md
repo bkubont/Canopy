@@ -51,6 +51,11 @@ See [the V1 audit and architecture](docs/ISSUE_1_AUDIT.md) and
 cloud preview uses Supabase; this original V1 entry and its browser data remain
 unchanged. No deployment or merge is authorized by that work.
 
+The approved V1.1 Step 2 backend/authentication upgrade adds crew roles,
+organizational permissions, invitations and password recovery. See
+[Step 2 implementation, tests and remaining work](docs/STEP_2_BACKEND_AUTH_REVIEW.md).
+The complete shared planner remains a separate, review-gated next step.
+
 1. Add real authentication (owner/admin and optional workers), secure password reset, session handling.
 2. Add a hosted relational database with per-user/per-organization authorization enforced server-side.
 3. Store photos in protected object storage; implement safe uploads, file limits, signed URLs, backups.

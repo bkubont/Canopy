@@ -1,5 +1,10 @@
 # Authentication and shared-database foundation (Stage 2)
 
+This document describes the earlier Issue #1 foundation. The approved V1.1
+Step 2 upgrade supersedes its employee-role/provisioning/storage limitations;
+use [STEP_2_BACKEND_AUTH_REVIEW.md](STEP_2_BACKEND_AUTH_REVIEW.md) for current setup,
+roles, forward migrations, Edge Function and test results. V1 remains unchanged.
+
 This is a reviewable, opt-in first stage for Issue #1, **not the complete cloud
 planner or a deployment**. V1's `index.html`, `app.js`, `styles.css`, and IndexedDB
 database are unchanged. `cloud.html` is a separate entry point in the built output.

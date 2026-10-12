@@ -5,6 +5,11 @@ For Issue #1's separate Supabase cloud foundation, read
 static HTTPS hosting without a Node/PHP backend. This pilot guide does not deploy
 or configure authentication, a shared database, or private photo storage.
 
+The V1.1 Step 2 upgrade is documented in
+[STEP_2_BACKEND_AUTH_REVIEW.md](docs/STEP_2_BACKEND_AUTH_REVIEW.md). Its migrations
+and Edge Function were tested locally only. Do not apply them to a live Supabase
+project or deploy the preview to Hostinger under the current authorization.
+
 **Do not deploy yet if you intend to enter real customer records.** V1 uses IndexedDB local browser storage only, no accounts, no database, and no cloud backups.
 
 ## Before deploying
