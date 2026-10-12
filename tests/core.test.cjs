@@ -17,7 +17,8 @@ function createApp() {
     setTimeout: () => {},
     confirm: () => true
   });
-  vm.runInContext(source, ctx);
+  const body = source.replace(/^\(function canopyV1\(\)\{\s*/, "").replace(/\}\)\(\);\s*$/, "");
+  vm.runInContext(body, ctx);
   return (code) => vm.runInContext(code, ctx);
 }
 test("new state starts empty", () => {
