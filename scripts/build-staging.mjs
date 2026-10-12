@@ -8,12 +8,12 @@ function replaceOnce(source, before, after) {
 }
 let app=await readFile('app.js','utf8');
 app=replaceOnce(app,'const KEY="canopy-v1"','const KEY="canopy-testing-v1"');
-app=replaceOnce(app,'db=await load()||fresh();render()', 'db=await load()||sample();await save();render()');
+app=replaceOnce(app,'let loaded=await load();db=migrate(loaded||fresh());if(loaded&&loaded.schema!==2)await save();render()', 'let loaded=await load();db=migrate(loaded||sample());if(!loaded||loaded.schema!==2)await save();render()');
 app=replaceOnce(app,'let db=fresh()', `function sample(){let data=fresh(),date=day();
  data.clients.push({id:'sample-client',name:'SAMPLE Client',address:'100 Example Lane',email:'sample@example.test',phone:'',details:'Fictional test record only'});
- data.workers.push({id:'sample-worker',name:'SAMPLE Worker',phone:'',role:'Crew'});
- data.projects.push({id:'sample-project',clientId:'sample-client',title:'SAMPLE Tree Job',address:'100 Example Lane',description:'Fictional private testing job',stage:'scheduled',phases:{},workerIds:['sample-worker']});
- data.visits.push({id:'sample-visit',projectId:'sample-project',start:date,end:date,startTime:'09:00',endTime:'12:00',workerIds:['sample-worker'],description:'Sample visit'});
+ data.workers.push({id:'sample-worker',name:'SAMPLE Worker',phone:'',position:'climbing_arborist',otherPosition:'',notes:'Fictional worker'});
+ data.projects.push({id:'sample-project',clientId:'sample-client',address:'100 Example Lane',scopeTypes:['removal','debris'],otherScope:'',jobNotes:'Fictional private testing job',stage:'work_scheduled',flag:'',phases:{},workerIds:[]});
+ data.visits.push({id:'sample-visit',projectId:'sample-project',visitType:'tree',start:date,end:date,startTime:'09:00',endTime:'12:00',workerIds:['sample-worker'],description:'Sample visit'});
  data.history.push({id:'sample-event',projectId:'sample-project',phase:null,type:'created',message:'SAMPLE project created',date,time:new Date().toISOString()});return data;}
 let db=fresh()`);
 app=replaceOnce(app, '🌲 Canopy<small>Tree work planner</small>', '🌲 CANOPY TESTING<small>Sample records only</small>');
@@ -32,6 +32,7 @@ html=replaceOnce(html,'<body>','<body>\n<div class="testing-banner" role="note">
 await rm('dist',{recursive:true,force:true});await mkdir('dist');
 await writeFile('dist/index.html',html);await writeFile('dist/app.js',app);
 await writeFile('dist/styles.css',(await readFile('styles.css','utf8'))+'\n.testing-banner{background:#ffe69a;color:#292000;padding:12px;text-align:center;font-weight:700;font-size:14px;line-height:1.4}');
+await copyFile('v1-2.css','dist/v1-2.css');
 await writeFile('dist/robots.txt','User-agent: *\nDisallow: /\n');
 await copyFile('staging/htaccess','dist/.htaccess');
 await mkdir('artifacts',{recursive:true});await rm('artifacts/canopy-testing.zip',{force:true});

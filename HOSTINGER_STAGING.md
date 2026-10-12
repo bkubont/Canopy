@@ -30,7 +30,7 @@ There is no cloud preview in this release and no environment variables are neede
 Build on Linux/macOS with Node, npm and `zip` installed (the cloud workspace
 already has these). `npm ci` uses the existing lockfile. The build clears only
 generated `dist/`, generates sample-only copies, and packages exactly:
-`index.html`, `app.js`, `styles.css`, `robots.txt`, `.htaccess`. The ZIP is ignored
+`index.html`, `app.js`, `styles.css`, `v1-2.css`, `robots.txt`, `.htaccess`. The ZIP is ignored
 by Git and must be generated/downloaded from the reviewed staging commit.
 Repeat builds include dotfiles and cannot accidentally retain a cloud bundle.
 
@@ -128,7 +128,7 @@ site/files through hPanel after owner approval. Never delete other sites.
 
 Commands: `npm test` (7 passed), `npm run test:staging` (desktop/mobile passed),
 `npx --no-install playwright test tests/browser/v1.spec.cjs` (desktop/mobile V1
-passed), `unzip -l artifacts/canopy-testing.zip` (exact five files including
+passed), `unzip -l artifacts/canopy-testing.zip` (exact six files including
 `.htaccess`), `node --check dist/app.js`, and `git diff --check`.
 Staging browser checks cover visible warning, no horizontal overflow, seed records,
 create/edit persistence, reset, disabled import and original IndexedDB preservation.
