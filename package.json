@@ -6,10 +6,12 @@
   "scripts": {
     "test": "node --check app.js && node --test tests/*.test.cjs",
     "build:cloud": "node scripts/build-cloud.mjs",
+    "build:edge": "node scripts/build-edge.mjs",
     "test:browser": "playwright test",
     "test:db": "node scripts/test-db.mjs",
     "test:integration": "node scripts/test-local-supabase.mjs",
-    "supabase:start": "node scripts/start-local.mjs"
+    "supabase:start": "node scripts/start-local.mjs",
+    "supabase:functions": "node scripts/start-functions.mjs"
   },
   "engines": {
     "node": ">=22"

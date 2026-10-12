@@ -31,7 +31,8 @@ enabled = true
 port = 54324
 
 [storage]
-enabled = false
+enabled = true
+file_size_limit = "10MiB"
 
 [auth]
 enabled = true
@@ -52,3 +53,8 @@ enabled = false
 
 [analytics]
 enabled = false
+
+[functions.account-admin]
+# The handler verifies the user token with Auth.getUser (supports current signing keys).
+# Gateway verification is not the authorization boundary.
+verify_jwt = false

@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 const bypass = ['localhost','127.0.0.1','supabase_db_Canopy','supabase_auth_Canopy','supabase_rest_Canopy','supabase_inbucket_Canopy'];
 const noProxy = [...new Set([...(process.env.NO_PROXY || process.env.no_proxy || '').split(',').filter(Boolean), ...bypass])].join(',');
 const args = ['--no-install','supabase','start','-x',
-  'realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor'];
+  'realtime,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor'];
 // BusyBox wget in some proxied sandboxes ignores NO_PROXY for container probes.
 // Only opt into this diagnosed workaround; actual HTTP health is still required below.
 if (process.env.CANOPY_LOCAL_PROXY_HEALTH_WORKAROUND === '1') args.push('--ignore-health-check');

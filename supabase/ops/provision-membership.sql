@@ -14,7 +14,7 @@
 \endif
 \if :{?member_role}
 \else
-  \echo 'Missing member_role (owner, admin, employee)'
+  \echo 'Missing member_role (owner, admin, crew_lead, worker)'
   \quit 1
 \endif
 begin;

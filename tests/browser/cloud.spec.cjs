@@ -37,7 +37,7 @@ test('cloud owner signs in, creates a shared client, refreshes and signs out', a
   await expect(page.getByText(name, { exact: true })).toHaveCount(0);
 });
 
-test('cloud employee sees assigned jobs only and has no create controls', async ({ page }) => {
+test('cloud worker sees assigned jobs only and has no administrative create controls', async ({ page }) => {
   test.skip(!fixture, 'Run npm run test:integration with the actual local Supabase fixture.');
   await page.goto('/dist/cloud.html');
   await page.getByLabel('Email', { exact: true }).fill(fixture.employee.email);
@@ -77,4 +77,57 @@ test('provider invitation sets a password without granting organization access',
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByText('No organization access.', { exact: false })).toBeVisible();
   expect(await page.evaluate(() => Object.keys(localStorage).filter(k => k.includes('auth')))).toEqual([]);
+});
+
+test('real recovery email lets the user set a new password and sign in',async({page,request})=>{
+  test.skip(!fixture,'Run npm run test:integration with local Supabase and SMTP.');
+  const user=fixture.recovery[test.info().project.name];
+  await page.goto('/dist/cloud.html');
+  await page.getByRole('button',{name:'Forgot password?',exact:true}).click();
+  await page.getByLabel('Recovery email',{exact:true}).fill(user.email);
+  await page.getByRole('button',{name:'Send recovery email',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('If this email belongs to an eligible account');
+  const list=await (await request.get(`${fixture.mailOrigin}/api/v1/messages`)).json();
+  const message=list.messages.find(m=>m.To?.some(t=>t.Address===user.email));
+  expect(Boolean(message)).toBe(true);
+  const mail=await (await request.get(`${fixture.mailOrigin}/api/v1/message/${message.ID}`)).json();
+  const link=mail.HTML.match(/href="([^"]*\/auth\/v1\/verify[^"]*)"/)?.[1]?.replaceAll('&amp;','&');
+  expect(Boolean(link)).toBe(true);
+  await page.goto(link);
+  await page.getByLabel('New password (at least 12 characters)').fill(user.newPassword);
+  await page.getByRole('button',{name:'Save password',exact:true}).click();
+  await expect(page.getByLabel('New password (at least 12 characters)')).toHaveCount(0);
+  expect(await page.evaluate(()=>!location.hash.includes('access_token'))).toBe(true);
+  await page.getByRole('button',{name:'Sign out',exact:true}).click();
+  await page.getByLabel('Email',{exact:true}).fill(user.email);
+  await page.getByLabel('Password',{exact:true}).fill(user.newPassword);
+  await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await expect(page.getByText('No organization access.',{exact:false})).toBeVisible();
+});
+
+test('owner sends an invitation and recipient accepts the server-authorized crew-lead role',async({page,request})=>{
+  test.skip(!fixture,'Run npm run test:integration with real local Edge Runtime and SMTP.');
+  const email=`${fixture.uiInvitePrefix}-${test.info().project.name}@example.test`;
+  await page.goto('/dist/cloud.html');
+  await page.getByLabel('Email',{exact:true}).fill(fixture.owner.email);
+  await page.getByLabel('Password',{exact:true}).fill(fixture.owner.password);
+  await page.getByRole('button',{name:'Sign in',exact:true}).click();
+  await page.getByLabel('Team member email',{exact:true}).fill(email);
+  await page.getByLabel('Team member role',{exact:true}).selectOption('crew_lead');
+  await page.getByRole('button',{name:'Send invitation',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('Invitation sent.');
+  const list=await (await request.get(`${fixture.mailOrigin}/api/v1/messages`)).json();
+  const message=list.messages.find(m=>m.To?.some(t=>t.Address===email));
+  expect(Boolean(message)).toBe(true);
+  const mail=await (await request.get(`${fixture.mailOrigin}/api/v1/message/${message.ID}`)).json();
+  const link=mail.HTML.match(/href="([^"]*\/auth\/v1\/verify[^"]*)"/)?.[1]?.replaceAll('&amp;','&');
+  expect(Boolean(link)).toBe(true);
+  await page.getByRole('button',{name:'Sign out',exact:true}).click();
+  await page.goto(link);
+  await expect(page.getByRole('heading',{name:'Workspace invitations',exact:true})).toBeVisible();
+  await expect(page.getByText('No organization access.',{exact:false})).toBeVisible();
+  await page.getByRole('button',{name:'Accept invitation',exact:true}).click();
+  await expect(page.getByLabel('Organization',{exact:true})).toContainText(`${fixture.organizationName} · crew_lead`);
+  await expect(page.getByRole('button',{name:'Send invitation',exact:true})).toHaveCount(0);
+  await expect(page.getByText('No permitted projects.',{exact:true})).toBeVisible();
 });
