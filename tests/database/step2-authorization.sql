@@ -184,4 +184,28 @@ update public.project_assignments set worker_id='00000000-0000-0000-0000-0000000
 select pg_temp.assert_true((select count(*) from public.project_assignments where worker_id='00000000-0000-0000-0000-000000000502')=1,'Owner can reassign a worker without changing assignment scope');
 reset role;
 select pg_temp.assert_true((select count(*) from pg_tables where schemaname='public' and not rowsecurity)=0,'All application tables have RLS');
+-- Independent review: every role must be isolated, even administrators.
+update public.memberships set active=true where user_id in ('00000000-0000-0000-0000-000000000203','00000000-0000-0000-0000-000000000204');
+set local role authenticated;
+do $$ declare who text; begin
+ foreach who in array array['201','202','203','204'] loop
+ perform set_config('request.jwt.claims',json_build_object('sub','00000000-0000-0000-0000-000000000'||who)::text,true);
+ perform pg_temp.assert_true((select count(*) from public.projects where organization_id='00000000-0000-0000-0000-000000000102')=0,'Role '||who||' cannot read foreign jobs');
+ perform pg_temp.assert_true((select count(*) from public.clients where organization_id='00000000-0000-0000-0000-000000000102')=0,'Role '||who||' cannot read foreign client secrets');
+ perform pg_temp.assert_true((select count(*) from public.admin_team_members('00000000-0000-0000-0000-000000000102'))=0,'Role '||who||' cannot administer foreign team');
+ perform pg_temp.assert_true((select count(*) from storage.objects where bucket_id='canopy-photos')=0,'Role '||who||' cannot bypass private storage competing policy');
+ if who in ('203','204') then
+ perform pg_temp.assert_true((select count(*) from public.clients)=0,'Field role '||who||' cannot read private client rows');
+ end if;
+ end loop;
+end $$;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-0000-0000-000000000201"}',true);
+update public.organizations set timezone='America/Detroit' where id='00000000-0000-0000-0000-000000000101';
+select pg_temp.assert_true((select timezone='America/Detroit' from public.organizations where id='00000000-0000-0000-0000-000000000101'),'Owner can configure Detroit timezone');
+reset role;
+select pg_temp.assert_true(public.business_day('00000000-0000-0000-0000-000000000101')=(now() at time zone 'America/Detroit')::date,'Business date uses configured Detroit timezone');
+select pg_temp.assert_true('2026-03-08 06:59:59+00'::timestamptz at time zone 'America/Detroit'='2026-03-08 01:59:59'::timestamp and '2026-03-08 07:00:00+00'::timestamptz at time zone 'America/Detroit'='2026-03-08 03:00:00'::timestamp,'Detroit spring transition skips 02 hour');
+select pg_temp.assert_true('2026-11-01 05:30:00+00'::timestamptz at time zone 'America/Detroit'='2026-11-01 01:30:00'::timestamp and '2026-11-01 06:30:00+00'::timestamptz at time zone 'America/Detroit'='2026-11-01 01:30:00'::timestamp,'Detroit fall transition repeats 01 hour');
+select pg_temp.assert_true(('2026-03-08 04:59:59+00'::timestamptz at time zone 'America/Detroit')::date='2026-03-07' and ('2026-03-08 05:00:00+00'::timestamptz at time zone 'America/Detroit')::date='2026-03-08','Detroit calendar date rolls at local midnight');
+reset role;
 rollback;

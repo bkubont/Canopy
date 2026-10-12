@@ -1,3 +1,4 @@
+import { createAccountHandler } from '../supabase/functions/account-admin/handler.js';
 import { createClient } from '@supabase/supabase-js';
 import { spawnSync } from 'node:child_process';
 import { randomUUID, randomBytes } from 'node:crypto';
@@ -111,6 +112,9 @@ try {
     assert.ok(signed.error,'Browser must not mint revocation-bypassing long-lived signed URLs');
   }
   pass('Real Storage API denies private downloads and long-lived signing for browser roles');
+  const publicPhoto=await fetch(`${url}/storage/v1/object/public/canopy-photos/${storagePath}`);
+  assert.ok(!publicPhoto.ok,'Unauthenticated public-object URL must not expose bytes');
+  pass('Unauthenticated public photo URL cannot return private bytes');
   const directUpload=await employeeClient.storage.from('canopy-photos').upload(`${orgA}/forged.png`,png,{contentType:'image/png'});
   assert.ok(directUpload.error);pass('Real Storage API denies unverified worker uploads');
   const publicChange=await ownerClient.storage.updateBucket('canopy-photos',{public:true});
@@ -164,6 +168,33 @@ try {
   assert.equal(malformed.status,400);pass('Edge invitation validates input before delivery');
   const foreignInvite=await edge(ownerClient,{action:'invite',organization_id:orgB,email:`canopy-${nonce}-foreign@example.test`,role:'worker',request_id:randomUUID()});
   assert.equal(foreignInvite.status,403);pass('Edge invitation cannot target another company');
+  // Inject only delivery failure; identity and all database RPCs use real local services.
+  for (const thrown of [false,true]) {
+    const failedEmail=`canopy-${nonce}-failure-${thrown}@example.test`;
+    const requestId=randomUUID();
+    const faulty={rpc:admin.rpc.bind(admin),auth:{getUser:admin.auth.getUser.bind(admin.auth),
+      admin:{inviteUserByEmail:async()=>{if(thrown)throw new Error('Injected transport failure');return {data:{user:null},error:{status:500}};}}}};
+    const handler=createAccountHandler({admin:faulty,appOrigin:'http://127.0.0.1:8765',redirectUrl:'http://127.0.0.1:8765/dist/cloud.html'});
+    const {data:session}=await ownerClient.auth.getSession();
+    const body={action:'invite',organization_id:orgA,email:failedEmail,role:'worker',request_id:requestId};
+    const response=await handler(new Request('http://127.0.0.1:8765',{method:'POST',headers:{Authorization:`Bearer ${session.session.access_token}`},body:JSON.stringify(body)}));
+    assert.equal(response.status,thrown?503:502);
+    const failed=await result(admin.from('organization_invitations').select('*').eq('request_id',requestId).single());
+    assert.equal(failed.status,thrown?'pending':'failed');
+    assert.equal(failed.invited_user_id,null);
+    assert.equal((await result(admin.from('memberships').select('user_id').eq('organization_id',orgA))).length,4);
+    const retry=await edge(ownerClient,body);assert.equal(retry.status,409);
+    const revokedInvite=await edge(ownerClient,{action:'revoke_invitation',invitation_id:failed.id});assert.equal(revokedInvite.status,200);
+    assert.equal((await edge(ownerClient,body)).status,409);
+    const renewed=await edge(ownerClient,{...body,request_id:randomUUID()});
+    assert.equal(renewed.status,200);
+    const renewedInvite=await result(admin.from('organization_invitations').select('invited_user_id').eq('id',renewed.data.invitation_id).single());
+    users.push({id:renewedInvite.invited_user_id});
+    assert.equal((await result(admin.from('memberships').select('user_id').eq('user_id',renewedInvite.invited_user_id))).length,0);
+    assert.equal((await edge(ownerClient,{action:'revoke_invitation',invitation_id:renewed.data.invitation_id})).status,200);
+    pass(`Delivery ${thrown?'transport exception':'provider rejection'} grants no membership; immediate retry and revoked replay fail closed`);
+    pass('New request after revocation sends through real SMTP without granting membership');
+  }
   const inviteEmail=`canopy-${nonce}-edge-invite@example.test`,requestId=randomUUID();
   const delivered=await edge(ownerClient,{action:'invite',organization_id:orgA,email:inviteEmail,role:'worker',request_id:requestId});
   assert.equal(delivered.status,200,`Local Edge invitation failed with status ${delivered.status}`);
