@@ -30,7 +30,7 @@ test("multi-day visit covers every day including both endpoints", () => {
   const run=createApp();
   assert.equal(run('dateRange("2026-10-11","2026-10-13").join(",")'),"2026-10-11,2026-10-12,2026-10-13");
 });
-test("moving project changes current stage without erasing prior daily history", () => {
+test("moving workflow preserves dated work and does not claim new work", () => {
   const run=createApp();
   run('db.projects.push({id:"p1",clientId:"c1",title:"Oak removal",stage:"scheduled",phases:{}})');
   run('log("p1","prep","work","Prepared lines","2026-10-10")');
@@ -39,7 +39,7 @@ test("moving project changes current stage without erasing prior daily history",
   assert.equal(run('db.history.length'),2);
   assert.equal(run('db.history[0].date'),"2026-10-10");
   assert.equal(run('statusFor("p1","2026-10-10").join(",")'),"prep");
-  assert.equal(run('statusFor("p1",day()).join(",")'),"tree");
+  assert.equal(run('statusFor("p1",day()).join(",")'),"");
 });
 test("assigning a worker does not count as phase progress", () => {
   const run=createApp();
@@ -52,4 +52,24 @@ test("assigning a worker does not count as phase progress", () => {
 test("user-entered client text is escaped before rendering", () => {
   const run=createApp();
   assert.equal(run('escape("<img src=x onerror=alert(1)>")'),"&lt;img src=x onerror=alert(1)&gt;");
+});
+test("legacy local data migrates without losing relationships or assignments", () => {
+  const run=createApp();
+  run(`db=migrate({schema:1,clients:[{id:"c1",name:"Sample"}],workers:[{id:"w1",name:"Worker",role:"Climber"}],projects:[{id:"p1",clientId:"c1",title:"Old title",description:"Old notes",stage:"scheduled",workerIds:["w1"],phases:{}}],visits:[{id:"v1",projectId:"p1",workerIds:["w1"]}],tasks:[{id:"t1",projectId:"p1"}],notes:[{id:"n1",projectId:"p1"}],photos:[{id:"f1",projectId:"p1",data:"data:image/jpeg;base64,sample"}],history:[{id:"h1",projectId:"p1",type:"work",phase:"tree",date:"2026-10-10",time:"2026-10-10T12:00:00Z"}]})`);
+  assert.equal(run("db.schema"),2);
+  assert.equal(run('proj("p1").stage'),"work_scheduled");
+  assert.equal(run('proj("p1").jobNotes'),"Old notes");
+  assert.equal(run('proj("p1").workerIds[0]'),"w1");
+  assert.equal(run('db.visits[0].workerIds[0]'),"w1");
+  assert.equal(run('db.tasks[0].id+db.notes[0].id+db.photos[0].id'),"t1n1f1");
+  assert.equal(run("db.history.length"),1);
+});
+test("workflow order, approval history, and duration defaults are explicit", () => {
+  const run=createApp();
+  assert.equal(run("STAGES.map(x=>x[1]).join('|')"),"Lead|Estimate|Approved|Work Scheduled|Prep & Rigging|Tree Work|Cleanup|Complete");
+  run('db.projects.push({id:"p1",stage:"estimate",phases:{}});changeStage("p1","approved")');
+  assert.equal(run('db.history.filter(x=>x.type==="approval").length'),1);
+  assert.equal(run('defaultEnd("estimate","10:00")'),"12:00");
+  assert.equal(run('defaultEnd("dump","13:00")'),"14:00");
+  assert.equal(run('defaultEnd("tree","10:00")'),"");
 });
