@@ -1,0 +1,64 @@
+.phone {
+  font-size: 15px;
+  font-weight: 750;
+}
+.scope-line {
+  color: #52695a;
+  font-size: 13px;
+  margin: 8px 0;
+}
+.joblist,
+.phaseaccordion,
+.phasehistory {
+  display: grid;
+  gap: 10px;
+}
+.jobcard {
+  border: 1px solid #e1e8e1;
+  border-radius: 11px;
+  display: flex;
+  gap: 15px;
+  justify-content: space-between;
+  padding: 15px;
+}
+.jobcard strong { font-size: 17px; }
+.jobcard p { color: #617467; margin: 5px 0; }
+.overviewgrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+}
+.facts {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 110px 1fr;
+  margin: 0;
+}
+.facts dt { font-weight: 750; }
+.facts dd { margin: 0; }
+.prewrap { white-space: pre-wrap; }
+.phaseaccordion .phase { padding: 0; }
+.phase summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  font-weight: 700;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 13px;
+}
+.phase[open] { padding-bottom: 13px; }
+.phase[open] > p,
+.phase[open] > .toolbar,
+.phasehistory { margin-left: 13px; margin-right: 13px; }
+.phasehistory { color: #698073; margin-top: 10px; }
+.field { border: 0; padding: 0; }
+.field legend { font-size: 12px; font-weight: 650; margin-bottom: 7px; }
+.caljob small { display: block; margin-top: 2px; }
+@media (max-width: 760px) {
+  .overviewgrid { grid-template-columns: 1fr; }
+  .jobcard { align-items: flex-start; }
+  .facts { grid-template-columns: 90px 1fr; }
+  .board { scroll-snap-type: x proximity; }
+  .lane { scroll-snap-align: start; }
+}
