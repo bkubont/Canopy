@@ -1,0 +1,13 @@
+name: Canopy runner diagnostic
+on:
+  push:
+    branches:
+      - feature/v1-2-usability
+permissions:
+  contents: read
+jobs:
+  runner-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm GitHub-hosted runner works
+        run: echo "Canopy diagnostic succeeded: GitHub-hosted runner started."
