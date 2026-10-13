@@ -69,7 +69,19 @@ test("workflow order, approval history, and duration defaults are explicit", () 
   assert.equal(run("STAGES.map(x=>x[1]).join('|')"),"Lead|Estimate|Approved|Work Scheduled|Prep & Rigging|Tree Work|Cleanup|Complete");
   run('db.projects.push({id:"p1",stage:"estimate",phases:{}});changeStage("p1","approved")');
   assert.equal(run('db.history.filter(x=>x.type==="approval").length'),1);
-  assert.equal(run('defaultEnd("estimate","10:00")'),"12:00");
-  assert.equal(run('defaultEnd("dump","13:00")'),"14:00");
-  assert.equal(run('defaultEnd("tree","10:00")'),"");
+  assert.equal(run('JSON.stringify(defaultEnd("estimate","2026-10-15","10:00"))'),'{"date":"2026-10-15","time":"12:00"}');
+  assert.equal(run('JSON.stringify(defaultEnd("dump","2026-10-15","13:00"))'),'{"date":"2026-10-15","time":"14:00"}');
+  assert.equal(run('JSON.stringify(defaultEnd("estimate","2026-10-15","23:00"))'),'{"date":"2026-10-16","time":"01:00"}');
+  assert.equal(run('JSON.stringify(defaultEnd("dump","2026-10-15","23:30"))'),'{"date":"2026-10-16","time":"00:30"}');
+  assert.equal(run('defaultEnd("tree","2026-10-15","10:00")'),null);
+});
+
+test("crew assignment controls exist only on calendar visits", () => {
+  const run=createApp();
+  run('db.projects.push({id:"p1",stage:"approved",phases:{prep:{complete:false,workerIds:["legacy"]}}})');
+  assert.equal(run('phaseCard(proj("p1"),"prep","Prep & Rigging").includes("Assign phase")'),false);
+  assert.equal(run('modalView().includes("Assign workers")'),false);
+  run('modal={type:"visit",ref:null}');
+  assert.equal(run('modalView().includes("Assign workers to this visit")'),true);
+  assert.equal(run('proj("p1").phases.prep.workerIds[0]'),"legacy");
 });
