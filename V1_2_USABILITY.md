@@ -17,12 +17,22 @@ integration, or authorize deployment. Use fictional sample records only.
   separately. Job creation accepts an existing contact or creates a basic one
   and has no worker controls.
 - Cards show contact, address, telephone link, scope, workflow and optional flag.
-- Visits have a structured type and their own optional worker list. Estimate
-  visits default to two hours and dump runs to one hour; the end time remains
-  editable. Other visit types require the user to supply an end time if desired.
+- Visits have a structured type and their own optional worker list. Workers can
+  be assigned or changed only through calendar visits. Legacy project, phase and
+  task worker lists are retained but are not editable through standalone controls.
+  Phase rows show scheduled visit crews and any historical phase crews read-only.
+- Saving an eligible Prep & Rigging, Tree Work or Cleanup visit advances an
+  Approved job to Work Scheduled exactly once and records a workflow entry.
+  Estimate, Dump Run and Other visits never trigger this transition; Lead,
+  Estimate and later-progress jobs are not advanced or moved backward.
+- Estimate visits default to two hours and dump runs to one hour, correctly
+  rolling end dates across midnight. Users can override end dates and times;
+  editing an existing timed visit leaves its end values intact. Invalid visit
+  ranges are rejected. Other visit types allow user-provided times.
 - The overview consolidates contact, scope, notes, workflow, next visit, upcoming
-  visit crew and dump-run count. Four expandable phase rows contain assignment,
-  actual-work, completion/reopening controls and recent dated history.
+  visit crew and dump-run count. Four expandable phase rows contain
+  actual-work, completion/reopening controls and recent dated history, without
+  standalone worker-assignment buttons.
 - Workers have an arborist-specific primary-position selector, an Other value,
   and multiline notes.
 - The sample-only staging build still uses `canopy-testing-v1`, retains its
@@ -64,3 +74,12 @@ The mobile run uses an iPhone-sized Chromium profile, not physical Safari.
 Legacy free-text scope is preserved as job notes and requires manual selection of
 new structured scope choices. The local prototype still has no synchronization,
 authentication, shared database, production photo service, or deployment.
+
+## V1.2 review corrections
+
+The October 13 correction commits are limited to the V1.2 feature branch.
+Added core and Playwright regression tests for overnight duration rollover,
+calendar-only crew controls and the Approved to Work Scheduled transition.
+The code and test changes still require independent execution and physical
+Safari review before approving a staging rollout. No Hostinger deployment,
+merge, or Step 3 integration is authorized.
