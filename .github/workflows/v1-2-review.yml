@@ -23,12 +23,10 @@ jobs:
         run: npm test
       - name: Install Chromium for browser tests
         run: npx playwright install --with-deps chromium
-      - name: Test V1.2 workflows in browsers
-        run: npm run test:browser
       - name: Build sample-only Hostinger package
         run: npm run build:staging
-      - name: Test sample-only staging build
-        run: npx playwright test tests/browser/staging.spec.cjs
+      - name: Test V1.2 and sample-only staging workflows in browsers
+        run: npm run test:browser
       - name: Verify ZIP contains only approved static files
         run: |
           set -eu
