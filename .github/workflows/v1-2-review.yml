@@ -1,0 +1,46 @@
+name: Canopy V1.2 review build
+on:
+  push:
+    branches:
+      - feature/v1-2-usability
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out V1.2
+        uses: actions/checkout@v4
+      - name: Install Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run core tests
+        run: npm test
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Test V1.2 workflows in browsers
+        run: npm run test:browser
+      - name: Build sample-only Hostinger package
+        run: npm run build:staging
+      - name: Test sample-only staging build
+        run: npx playwright test tests/browser/staging.spec.cjs
+      - name: Verify ZIP contains only approved static files
+        run: |
+          set -eu
+          node --check dist/app.js
+          unzip -Z1 artifacts/canopy-testing.zip | sort > actual.txt
+          printf '%s\n' .htaccess app.js index.html robots.txt styles.css v1-2.css | sort > expected.txt
+          diff -u expected.txt actual.txt
+          ! grep -E -i 'supabase|api[_-]?key|service_role' dist/app.js
+      - name: Save private testing ZIP for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: canopy-v1-2-testing
+          path: artifacts/canopy-testing.zip
+          retention-days: 14
+          if-no-files-found: error
