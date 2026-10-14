@@ -41,8 +41,8 @@ Copy shapes from [`.env.example`](.env.example).
 3. Deploy Node.js source with `hosting_deploy-js-application` (or upload `app.zip` + `hosting_nodejs_start-build`). Archive must exclude `node_modules/`, `.next/`, and `.env*`.
 4. Build settings: framework Next.js; build command `npm run build`; start via Hostinger’s Node runner (`next start` / detected entry).
 5. Create DB: `hosting_databases_setup-website`.
-6. Add `SESSION_SECRET` (and seed vars if needed) via env replace — **full replace**; list existing keys first and keep all of them.
-7. Run migrations on the server (SSH/cron or one-shot): `npx prisma migrate deploy`, then optionally `npm run db:seed`.
+6. Add `SESSION_SECRET` (and seed vars if needed) via env replace — **full replace**; list existing keys first and keep all of them. Do this **before** the first Node build so `npm run build` can migrate and seed (Hostinger loads Node env into the build).
+7. Deploy / rebuild. The production `build` script runs `prisma migrate deploy` and `tsx prisma/seed.ts` before `next build`. Seed is idempotent (skips if the owner email already exists). After the first successful seed, remove `SEED_OWNER_PASSWORD` from env when convenient.
 8. Verify:
    - `GET https://DOMAIN/api/health` → `{"ok":true,"database":"ok",...}`
    - `https://DOMAIN/login` loads
@@ -68,3 +68,12 @@ npm run dev
 ## Legacy static pilot
 
 Do not deploy `legacy-pilot/` as the production site. See [`legacy-pilot/README.md`](legacy-pilot/README.md) for the IndexedDB JSON export path used by a later import feature.
+
+## Hostinger Node layout (Business)
+
+Published app lives under `hbuilds/` (not only `public_html`):
+
+- Current: `/home/<user>/domains/<domain>/hbuilds/current/nodejs`
+- Versioned: `/home/<user>/domains/<domain>/hbuilds/versions/<build-uuid>/nodejs`
+
+`public_html/.htaccess` points Passenger at the current build. File-browser listings of `public_html` may show little more than `.htaccess` after a Node deploy.
