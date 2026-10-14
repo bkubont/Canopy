@@ -1,0 +1,194 @@
+:root {
+  --canopy-ink: #1a2e24;
+  --canopy-forest: #2f5d46;
+  --canopy-moss: #5a8f6d;
+  --canopy-leaf: #8fbf6b;
+  --canopy-cream: #f3f6f1;
+  --canopy-mist: #dce8df;
+  --canopy-warn: #9a4d2e;
+  --canopy-shadow: rgba(26, 46, 36, 0.12);
+  --font-display: var(--font-display-loaded), "Iowan Old Style", Georgia, serif;
+  --font-body: var(--font-body-loaded), "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  color: var(--canopy-ink);
+  font-family: var(--font-body);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #cfe3d4 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #e7f0c9 0%, transparent 45%),
+    linear-gradient(180deg, #eef4ef 0%, var(--canopy-cream) 45%, #e6efe8 100%);
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--canopy-forest) 18%, transparent);
+  background: color-mix(in srgb, white 70%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-weight: 650;
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+  color: var(--canopy-forest);
+}
+
+.brand span {
+  color: var(--canopy-moss);
+  font-weight: 500;
+}
+
+.panel {
+  width: min(420px, calc(100% - 2rem));
+  margin: 4rem auto;
+  padding: 1.75rem;
+  border: 1px solid color-mix(in srgb, var(--canopy-forest) 14%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, white 88%, transparent);
+  box-shadow: 0 18px 40px var(--canopy-shadow);
+}
+
+.panel h1 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.panel p.lede {
+  margin: 0 0 1.35rem;
+  color: color-mix(in srgb, var(--canopy-ink) 72%, white);
+  line-height: 1.45;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.95rem;
+}
+
+.field label {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.field input {
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--canopy-forest) 22%, white);
+  background: white;
+}
+
+.field input:focus {
+  outline: 2px solid color-mix(in srgb, var(--canopy-leaf) 70%, var(--canopy-forest));
+  outline-offset: 1px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.7rem 1rem;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  background: var(--canopy-forest);
+  color: white;
+  font-weight: 600;
+}
+
+.btn:hover {
+  background: color-mix(in srgb, var(--canopy-forest) 85%, black);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn.secondary {
+  background: transparent;
+  color: var(--canopy-forest);
+  border: 1px solid color-mix(in srgb, var(--canopy-forest) 35%, white);
+}
+
+.error {
+  margin: 0 0 0.9rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--canopy-warn) 12%, white);
+  color: var(--canopy-warn);
+  font-size: 0.92rem;
+}
+
+.app-main {
+  width: min(960px, calc(100% - 2rem));
+  margin: 2rem auto;
+}
+
+.muted {
+  color: color-mix(in srgb, var(--canopy-ink) 65%, white);
+}
+
+.status-grid {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, white 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--canopy-forest) 12%, transparent);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  background: color-mix(in srgb, var(--canopy-leaf) 28%, white);
+  color: var(--canopy-forest);
+}
+
+.pill.bad {
+  background: color-mix(in srgb, var(--canopy-warn) 18%, white);
+  color: var(--canopy-warn);
+}

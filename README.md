@@ -1,59 +1,45 @@
 # Canopy · Tree Work Planner
 
-A lightweight, mobile-friendly tree-service scheduling and job-organizing web app. **V1 is a local-first pilot**, not yet a secure shared production system.
+Production app for tree-service job planning: **Next.js (App Router) + Prisma + MySQL** on Hostinger, with owner email/password sign-in.
 
-## What V1 does
+The original browser-only IndexedDB pilot is quarantined in [`legacy-pilot/`](legacy-pilot/).
 
-- Clients: name, phone, email, property address, client notes.
-- Projects: any number of distinct jobs per client, each with its own scope and job-site address.
-- Workers: optional crew directory, project assignments, phase assignments, and visit assignments.
-- Schedule: month calendar, single- or multi-day site visits, worker assignments, start/end times, linked project cards.
-- Kanban: Ready → Scheduled → Estimate → Prep & Rigging → Tree Work → Cleanup → Complete, with drag and drop (desktop) or Move action (mobile).
-- Project phases: record work on a specified day, mark complete/reopen separately, optionally assign workers.
-- Daily history: date-stamped changes and phase activity remain attached to the project. A stage change never overwrites previous dates. Calendar badges show actual recorded phase progress for each visit day.
-- Tasks: general tasks and unlimited brush/dump runs, dates, destinations, crew assignments, completion.
-- Notes/photos: timestamped project notes and compressed job photos stored with that project.
-- Backups: export JSON and restore JSON.
+## Phase 0 (this branch)
 
-**Not included:** estimates/invoices, GPS/timeclock, server-side database, user authentication, live multi-device sync, role-based permissions, reminders, automated cloud backups, email/SMS, or cost/profit reporting.
+- Signed-in owner shell (`/login`, `/app`)
+- Health check (`/api/health`)
+- Prisma models: `Business`, `User`, `Client`, `Job`
+- Secure HTTP-only session cookies (HTTPS in production)
 
-## Run locally
+Phases 1–4 (clients UI, photos, visits, kanban, etc.) are not built yet.
 
-1. Download or clone this repo.
-2. From its root run `python -m http.server 8000` or `py -m http.server 8000`.
-3. Open `http://localhost:8000` in a modern browser.
-4. Add a client, project, worker, and visit. Test moving phases, notes, tasks, photos.
-5. Go to **Backup** and export a JSON copy before clearing browser data.
+## Local setup
 
-No API keys, packages, credentials, or build command are required. The deployable web files are `index.html`, `styles.css`, and `app.js`.
+1. Copy [`.env.example`](.env.example) to `.env.local` and set `DATABASE_URL` + `SESSION_SECRET`.
+2. `npm install`
+3. `npx prisma migrate deploy`
+4. `npm run db:seed` (uses `SEED_OWNER_*` env vars)
+5. `npm run dev` → http://localhost:3000
 
-## Verify changes
+## Scripts
 
-With Node 22+:
+| Script | Purpose |
+| --- | --- |
+| `npm run dev` | Local Next.js dev server |
+| `npm run build` / `npm start` | Production build & serve |
+| `npm test` | Lint + TypeScript check |
+| `npm run db:migrate` | Apply Prisma migrations |
+| `npm run db:seed` | Create business + owner |
 
-```sh
-npm test
-```
+## Auth model
 
-This checks JavaScript syntax and core V1 state/history rules. You should also manually run through [V1_ACCEPTANCE_TESTS.md](V1_ACCEPTANCE_TESTS.md) on desktop and iPhone before deployment.
+- **Owner** (and later optional schedulers) sign in with email/password.
+- **Workers** are roster display names only — no login in this release.
 
-## Data and privacy
+## Deploy
 
-This app uses browser **IndexedDB**, not a hosted database. A public repository exposes the source code, **not** records entered into your browser. But an HTTPS URL is not a login system. Each browser/device is its own disconnected workspace. Anyone visiting the site sees their own blank local database.
+See [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md). Prefer a new empty Node.js site; never overwrite a live site without confirmation. Secrets stay in Hostinger env vars only.
 
-There is no server-based access control, shared crew portal, or automated backup. Browser data can be lost, and local photos inflate JSON backups. Do not use V1 as the sole record of client contact information, job photos, or business activity; do not publish real private client records for testing. Keep independent backups.
+## Pilot JSON import (later)
 
-## Next production milestone (before relying on it daily)
-
-1. Add real authentication (owner/admin and optional workers), secure password reset, session handling.
-2. Add a hosted relational database with per-user/per-organization authorization enforced server-side.
-3. Store photos in protected object storage; implement safe uploads, file limits, signed URLs, backups.
-4. Migrate existing IndexedDB data through a validated import process.
-5. Add automatic backup/restore, change audit trail, and cross-device data synchronization.
-6. Test permission boundaries, multi-day calendar status, photo upload and mobile UX.
-
-Keep secrets, database credentials, and private API keys **out of this public repository**.
-
-## Hostinger
-
-See [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md). Do not deploy over an existing live website. You can host the static pilot after testing; this does not change local-only data storage.
+Export JSON from the legacy pilot Backup screen. Phase 1+ will add an authenticated importer for mapped fields. Details: [`legacy-pilot/README.md`](legacy-pilot/README.md).
