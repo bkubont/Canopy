@@ -7,7 +7,7 @@ export default async function AppHomePage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [user, business, clientCount, jobCount, noteCount, health] =
+  const [user, business, clientCount, jobCount, noteCount, visitCount, workerCount, health] =
     await Promise.all([
       prisma.user.findUnique({
         where: { id: session.userId },
@@ -24,6 +24,20 @@ export default async function AppHomePage() {
         where: { businessId: session.businessId, archivedAt: null },
       }),
       prisma.note.count({ where: { businessId: session.businessId } }),
+      prisma.visit.count({
+        where: {
+          businessId: session.businessId,
+          status: { not: "canceled" },
+          workDate: {
+            gte: new Date(
+              new Date().toISOString().slice(0, 10) + "T00:00:00.000Z",
+            ),
+          },
+        },
+      }),
+      prisma.worker.count({
+        where: { businessId: session.businessId, archivedAt: null },
+      }),
       prisma.$queryRaw`SELECT 1`.then(() => true).catch(() => false),
     ]);
 
@@ -33,16 +47,22 @@ export default async function AppHomePage() {
     <section className="app-main">
       <h1 className="page-title">Owner workspace</h1>
       <p className="muted">
-        Clients, jobs, and notes with protected photos. Calendar and kanban come
-        in later phases.
+        Clients, jobs, visits, worker assignments, and calendar — same source of
+        truth. Kanban depth arrives in Phase 3.
       </p>
 
       <div className="quick-links">
-        <Link className="btn" href="/app/clients">
+        <Link className="btn" href="/app/calendar">
+          Calendar
+        </Link>
+        <Link className="btn secondary" href="/app/clients">
           Clients
         </Link>
         <Link className="btn secondary" href="/app/jobs">
           Jobs
+        </Link>
+        <Link className="btn secondary" href="/app/workers">
+          Workers
         </Link>
         <Link className="btn secondary" href="/app/settings">
           Export / import
@@ -75,6 +95,12 @@ export default async function AppHomePage() {
         <div className="status-row">
           <span>Notes</span>
           <strong>{noteCount}</strong>
+        </div>
+        <div className="status-row">
+          <span>Upcoming visits / workers</span>
+          <strong>
+            {visitCount} / {workerCount}
+          </strong>
         </div>
         <div className="status-row">
           <span>Health</span>

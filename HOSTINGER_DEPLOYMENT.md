@@ -35,13 +35,15 @@ Set these on the Node.js website (hPanel or `hosting_nodejs_replace-environment-
 
 Copy shapes from [`.env.example`](.env.example).
 
-## Backups (Phase 1)
+## Backups (Phase 1–2)
 
 | What | Where |
 | --- | --- |
-| Clients / jobs / notes metadata | MySQL — Hostinger account backups + owner Export JSON/CSV from **Settings** |
+| Clients / jobs / notes / visits / workers / assignments | MySQL — Hostinger account backups + owner Export JSON/CSV from **Settings** |
 | Photo binaries | Private `canopy-uploads` on the hosting account (auth-gated downloads only; no public URLs) |
 | Pilot import | Settings → Import V1 IndexedDB JSON (maps clients, jobs, notes, photos) |
+
+Phase 2 adds Prisma migration `20261015070000_phase2_visits_assignments` (applied automatically by `npm run build` → `prisma migrate deploy`).
 
 Recommended: enable Hostinger plan backups if available; otherwise export JSON weekly from Settings before major changes. Restore MySQL and `canopy-uploads` together for a full recovery.
 

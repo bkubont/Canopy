@@ -10,6 +10,8 @@ type JobRow = {
   title: string;
   siteAddress: string | null;
   archivedAt: string | null;
+  schedulingState?: string;
+  visitCount?: number;
   client: { id: string; name: string };
   noteCount: number;
 };
@@ -146,6 +148,11 @@ export function JobsPanel() {
                   {[
                     j.client.name,
                     j.siteAddress,
+                    j.schedulingState
+                      ? j.schedulingState.charAt(0).toUpperCase() +
+                        j.schedulingState.slice(1)
+                      : null,
+                    j.visitCount != null ? `${j.visitCount} visits` : null,
                     `${j.noteCount} notes`,
                     j.archivedAt ? "archived" : null,
                   ]

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireOwnerSession } from "@/lib/api-auth";
+import { ensureJobStages } from "@/lib/job-stages";
 import { prisma } from "@/lib/prisma";
+import { deriveSchedulingState } from "@/lib/scheduling";
+import { STAGE_DEFS } from "@/lib/stages";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +46,8 @@ export async function GET(request: Request) {
     orderBy: { updatedAt: "desc" },
     include: {
       client: { select: { id: true, name: true } },
-      _count: { select: { notes: true } },
+      visits: { select: { status: true } },
+      _count: { select: { notes: true, visits: true } },
     },
   });
 
@@ -55,8 +59,16 @@ export async function GET(request: Request) {
       description: j.description,
       version: j.version,
       archivedAt: j.archivedAt,
+      readyForScheduling: j.readyForScheduling,
+      canceledAt: j.canceledAt,
+      schedulingState: deriveSchedulingState({
+        canceledAt: j.canceledAt,
+        readyForScheduling: j.readyForScheduling,
+        visits: j.visits,
+      }),
       client: j.client,
       noteCount: j._count.notes,
+      visitCount: j._count.visits,
       createdAt: j.createdAt,
       updatedAt: j.updatedAt,
     })),
@@ -93,9 +105,29 @@ export async function POST(request: Request) {
       title: parsed.data.title,
       siteAddress: parsed.data.siteAddress || null,
       description: parsed.data.description || null,
+      stages: {
+        create: STAGE_DEFS.map((s) => ({
+          businessId: auth.session.businessId,
+          key: s.key,
+          label: s.label,
+          progress: "not_started",
+          sortOrder: s.sortOrder,
+        })),
+      },
     },
     include: { client: { select: { id: true, name: true } } },
   });
 
-  return NextResponse.json({ job }, { status: 201 });
+  await ensureJobStages(auth.session.businessId, job.id);
+
+  return NextResponse.json(
+    {
+      job: {
+        ...job,
+        schedulingState: "unscheduled" as const,
+        visitCount: 0,
+      },
+    },
+    { status: 201 },
+  );
 }

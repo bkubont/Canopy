@@ -531,6 +531,179 @@ input {
   font-size: 0.92rem;
 }
 
+.app-main.wide {
+  width: min(1100px, calc(100% - 2rem));
+}
+
+.job-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  align-items: flex-start;
+}
+
+.pill.state-unscheduled {
+  background: color-mix(in srgb, #9aa4a0 22%, white);
+  color: #4a5550;
+}
+.pill.state-ready {
+  background: color-mix(in srgb, #8a8f98 22%, white);
+  color: #3d4248;
+}
+.pill.state-scheduled {
+  background: color-mix(in srgb, var(--canopy-leaf) 28%, white);
+  color: var(--canopy-forest);
+}
+.pill.state-canceled {
+  background: color-mix(in srgb, var(--canopy-warn) 18%, white);
+  color: var(--canopy-warn);
+}
+
+.visit-scheduler {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, white 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--canopy-forest) 12%, transparent);
+}
+
+.visit-scheduler h3 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+.day-picker {
+  margin: 0.85rem 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--canopy-forest) 14%, transparent);
+}
+
+.day-picker legend {
+  padding: 0 0.35rem;
+  font-weight: 650;
+  font-size: 0.92rem;
+}
+
+.day-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  margin: 0.45rem 0 0.65rem;
+}
+
+.day-check {
+  min-width: 5.5rem;
+}
+
+.selected-visit {
+  outline: 2px solid var(--canopy-moss);
+  outline-offset: 1px;
+}
+
+.cal-toolbar {
+  justify-content: space-between;
+}
+
+.cal-heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.cal-agenda-date {
+  margin: 0.85rem 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--canopy-forest);
+}
+
+.cal-month {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: color-mix(in srgb, var(--canopy-forest) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--canopy-forest) 14%, transparent);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.cal-weekday {
+  padding: 0.45rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: color-mix(in srgb, white 88%, transparent);
+  color: var(--canopy-forest);
+}
+
+.cal-day {
+  min-height: 6.5rem;
+  padding: 0.35rem;
+  background: color-mix(in srgb, white 90%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cal-day.other {
+  opacity: 0.55;
+}
+
+.cal-day.today {
+  background: color-mix(in srgb, var(--canopy-leaf) 18%, white);
+}
+
+.cal-daynum {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--canopy-forest);
+}
+
+.cal-day-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  text-decoration: none;
+  background: color-mix(in srgb, var(--canopy-forest) 10%, white);
+  border-left: 3px solid var(--canopy-moss);
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+.cal-card:hover {
+  background: color-mix(in srgb, var(--canopy-leaf) 28%, white);
+}
+
+.cal-card strong {
+  font-size: 0.82rem;
+}
+
+.cal-week {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.55rem;
+}
+
+.cal-week-col {
+  padding: 0.55rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, white 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--canopy-forest) 12%, transparent);
+  min-height: 8rem;
+}
+
 @media (max-width: 640px) {
   .list-row {
     flex-direction: column;
@@ -539,5 +712,13 @@ input {
 
   .page-title {
     font-size: 1.65rem;
+  }
+
+  .cal-month {
+    font-size: 0.85rem;
+  }
+
+  .cal-day {
+    min-height: 4.5rem;
   }
 }
