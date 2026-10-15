@@ -1,4 +1,4 @@
-// Canopy Phase 1 — clients, jobs, notes, protected attachments
+// Canopy Phase 2 — visits, workers, assignments, calendar
 generator client {
   provider = "prisma-client-js"
 }
@@ -20,6 +20,11 @@ model Business {
   jobs        Job[]
   notes       Note[]
   attachments Attachment[]
+  workers     Worker[]
+  visits      Visit[]
+  stages      JobStage[]
+  tasks       Task[]
+  assignments Assignment[]
 
   @@map("businesses")
 }
@@ -62,22 +67,29 @@ model Client {
 }
 
 model Job {
-  id          String    @id @default(cuid())
-  businessId  String    @map("business_id")
-  clientId    String    @map("client_id")
-  title       String
-  siteAddress String?   @map("site_address") @db.Text
-  description String?   @db.Text
+  id                  String    @id @default(cuid())
+  businessId          String    @map("business_id")
+  clientId            String    @map("client_id")
+  title               String
+  siteAddress         String?   @map("site_address") @db.Text
+  description         String?   @db.Text
   /// Optimistic concurrency counter (used in later phases)
-  version     Int       @default(1)
-  archivedAt  DateTime? @map("archived_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  version             Int       @default(1)
+  /// Owner marked job ready to schedule (derived state uses this)
+  readyForScheduling  Boolean   @default(false) @map("ready_for_scheduling")
+  canceledAt          DateTime? @map("canceled_at")
+  archivedAt          DateTime? @map("archived_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
   client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   notes       Note[]
   attachments Attachment[]
+  visits      Visit[]
+  stages      JobStage[]
+  tasks       Task[]
+  assignments Assignment[]
 
   @@index([businessId])
   @@index([clientId])
@@ -124,4 +136,124 @@ model Attachment {
   @@index([jobId])
   @@index([noteId])
   @@map("attachments")
+}
+
+/// Roster worker — display name only; no login (Phase 2)
+model Worker {
+  id         String    @id @default(cuid())
+  businessId String    @map("business_id")
+  name       String
+  phone      String?   @db.VarChar(64)
+  role       String?   @db.VarChar(128)
+  archivedAt DateTime? @map("archived_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+
+  @@index([businessId])
+  @@map("workers")
+}
+
+/// One calendar day of work for a job (multi-day ranges expand to one row per day)
+model Visit {
+  id         String    @id @default(cuid())
+  businessId String    @map("business_id")
+  jobId      String    @map("job_id")
+  /// Business calendar date (timezone-aware at the app layer)
+  workDate   DateTime  @map("work_date") @db.Date
+  allDay     Boolean   @default(true) @map("all_day")
+  /// Local wall-clock HH:mm when not all-day
+  startTime  String?   @map("start_time") @db.VarChar(8)
+  endTime    String?   @map("end_time") @db.VarChar(8)
+  /// scheduled | canceled (unplanned added in Phase 3)
+  status     String    @default("scheduled") @db.VarChar(32)
+  notes      String?   @db.Text
+  canceledAt DateTime? @map("canceled_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  job         Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+
+  @@index([businessId, workDate])
+  @@index([jobId])
+  @@map("visits")
+}
+
+/// Phase 2 stage placeholder rows (full kanban progress in Phase 3)
+model JobStage {
+  id         String   @id @default(cuid())
+  businessId String   @map("business_id")
+  jobId      String   @map("job_id")
+  /// estimate | prep | tree_work | cleanup
+  key        String   @db.VarChar(32)
+  label      String   @db.VarChar(64)
+  /// not_started | in_progress | completed | not_needed (Phase 3)
+  progress   String   @default("not_started") @db.VarChar(32)
+  sortOrder  Int      @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  job         Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+
+  @@unique([jobId, key])
+  @@index([businessId])
+  @@map("job_stages")
+}
+
+/// Minimal task placeholder so assignments can target tasks before Phase 3 depth
+model Task {
+  id         String    @id @default(cuid())
+  businessId String    @map("business_id")
+  jobId      String    @map("job_id")
+  title      String
+  /// general | dump
+  kind       String    @default("general") @db.VarChar(32)
+  stageKey   String?   @map("stage_key") @db.VarChar(32)
+  workDate   DateTime? @map("work_date") @db.Date
+  done       Boolean   @default(false)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  job         Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+
+  @@index([businessId])
+  @@index([jobId])
+  @@map("tasks")
+}
+
+/// Optional assignment at job, visit, stage, or task level
+model Assignment {
+  id                      String   @id @default(cuid())
+  businessId              String   @map("business_id")
+  workerId                String   @map("worker_id")
+  /// Always set for business scoping / job-level targets
+  jobId                   String   @map("job_id")
+  visitId                 String?  @map("visit_id")
+  stageId                 String?  @map("stage_id")
+  taskId                  String?  @map("task_id")
+  /// Required when owner overrides a timed conflict warning
+  conflictOverrideReason  String?  @map("conflict_override_reason") @db.Text
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  worker   Worker    @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  job      Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  visit    Visit?    @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  stage    JobStage? @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  task     Task?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([workerId])
+  @@index([jobId])
+  @@index([visitId])
+  @@map("assignments")
 }

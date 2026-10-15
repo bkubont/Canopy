@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { JobDetail } from "@/components/job-detail";
 
 export default async function JobDetailPage({
@@ -12,7 +13,9 @@ export default async function JobDetailPage({
       <p className="crumb">
         <Link href="/app/jobs">Jobs</Link> / detail
       </p>
-      <JobDetail jobId={id} />
+      <Suspense fallback={<p className="muted">Loading…</p>}>
+        <JobDetail jobId={id} />
+      </Suspense>
     </section>
   );
 }

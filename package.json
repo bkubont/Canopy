@@ -11,7 +11,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "test": "npm run lint && npx tsc --noEmit",
+    "test": "npm run lint && npx tsc --noEmit && node --import tsx --test src/lib/scheduling.test.ts",
     "postinstall": "prisma generate",
     "test:legacy": "node --check legacy-pilot/app.js && (cd legacy-pilot && node --test tests/*.test.cjs)"
   },

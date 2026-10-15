@@ -6,8 +6,10 @@ import { LogoutButton } from "@/app/app/logout-button";
 
 const LINKS = [
   { href: "/app", label: "Home", exact: true },
+  { href: "/app/calendar", label: "Calendar" },
   { href: "/app/clients", label: "Clients" },
   { href: "/app/jobs", label: "Jobs" },
+  { href: "/app/workers", label: "Workers" },
   { href: "/app/settings", label: "Settings" },
 ];
 
