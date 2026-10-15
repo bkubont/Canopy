@@ -36,6 +36,10 @@ yarn-error.log*
 .env.*.local
 !.env.example
 
+# local attachment storage
+/data/uploads/
+/canopy-uploads/
+
 # vercel
 .vercel
 
