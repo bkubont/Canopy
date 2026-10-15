@@ -1,0 +1,79 @@
+// Canopy Phase 0 — minimal models for signed-in shell
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Business {
+  id        String   @id @default(cuid())
+  name      String
+  timezone  String   @default("America/Detroit")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users   User[]
+  clients Client[]
+  jobs    Job[]
+
+  @@map("businesses")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  businessId   String   @map("business_id")
+  email        String   @unique
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  name         String?
+  /// owner | scheduler (Phase 0 seeds an owner only)
+  role         String   @default("owner") @db.VarChar(32)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("users")
+}
+
+model Client {
+  id         String    @id @default(cuid())
+  businessId String    @map("business_id")
+  name       String
+  phone      String?   @db.VarChar(64)
+  email      String?   @db.VarChar(255)
+  address    String?   @db.Text
+  notes      String?   @db.Text
+  archivedAt DateTime? @map("archived_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  jobs     Job[]
+
+  @@index([businessId])
+  @@map("clients")
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  businessId  String    @map("business_id")
+  clientId    String    @map("client_id")
+  title       String
+  siteAddress String?   @map("site_address") @db.Text
+  /// Optimistic concurrency counter (used in later phases)
+  version     Int       @default(1)
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([clientId])
+  @@map("jobs")
+}

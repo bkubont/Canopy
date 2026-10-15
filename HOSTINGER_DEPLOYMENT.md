@@ -1,22 +1,79 @@
-# Deploying Canopy to Hostinger (static pilot)
+# Deploying Canopy to Hostinger (production Node.js + MySQL)
 
-**Do not deploy yet if you intend to enter real customer records.** V1 uses IndexedDB local browser storage only, no accounts, no database, and no cloud backups.
+Canopy production is a **Next.js (App Router)** app with **Prisma** and **MySQL**, not the static IndexedDB pilot. The pilot lives under [`legacy-pilot/`](legacy-pilot/) for UX reference and a future JSON import path.
 
-## Before deploying
-1. Run `npm test` and complete `V1_ACCEPTANCE_TESTS.md` using sample jobs.
-2. Set up a **new empty** Hostinger custom HTML website or subdomain. Do not overwrite SquareThisUp or another active site.
-3. Confirm your Hostinger plan's supported Git integration and document root. Keep database credentials and API keys out of this public repo.
+## Costs (document before paid add-ons)
 
-## Git deployment (supported hosting plans)
-1. In hPanel open **Websites → Dashboard** for the new custom website.
-2. Find **Advanced → Git** (availability varies by hosting plan). Connect GitHub and choose `bkubont/Canopy`, branch `main`.
-3. Deploy into the correct site's empty public directory (often `public_html`). Verify the correct directory first: deploying into an existing site may replace it.
-4. Over HTTPS, verify the site loads on desktop/mobile and complete the manual smoke tests.
-5. Keep regular JSON backups. Expect records made in one browser **not** to appear on other devices.
+Recurring Hostinger charges typically include:
 
-If your Hostinger plan cannot deploy from GitHub, use File Manager to upload **only** `index.html`, `app.js`, and `styles.css` into the new site's document root.
+| Item | Notes |
+| --- | --- |
+| Business or Cloud hosting plan | Required for Node.js apps on Shared/Cloud |
+| Domain (optional) | Free `*.hostingersite.com` subdomain works for Phase 0 |
+| MySQL | Included with the hosting plan for website databases |
+| SSL | Included; keep HTTPS redirect on |
 
-## Production deployment is a separate milestone
-To support real worker logins and shared data, implement a secure hosted backend with authorization, relational persistence, private photo storage, sync, audit history, and automated backups before allowing customers' records to be entered.
+Do **not** purchase domains, VPS, or other paid catalog items from automation without an explicit owner confirmation.
 
-Hostinger guide: https://www.hostinger.com/support/1583302-how-to-deploy-a-git-repository-in-hostinger/
+## Prerequisites
+
+1. An active Hostinger **Business** or **Cloud** order that supports Node.js.
+2. Prefer a **new empty** website. Never overwrite SquareThisUp or another live site without explicit confirmation.
+3. Secrets only via Hostinger Node.js environment variables (never commit `.env`).
+
+## Environment variables
+
+Set these on the Node.js website (hPanel or `hosting_nodejs_replace-environment-variables`). Prefer `hosting_databases_setup-website` to create MySQL and inject `DATABASE_URL` / `DB_*` automatically.
+
+| Key | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Prisma MySQL URL. **From the app use `127.0.0.1:3306`**, not `localhost` and not the external `srv….hstgr.io` host |
+| `SESSION_SECRET` | Long random string (≥16 chars) for signed session cookies |
+| `SESSION_SECURE` | `true` on HTTPS production |
+| `SEED_OWNER_EMAIL` / `SEED_OWNER_PASSWORD` | Used once with `npm run db:seed` (optional; remove password after seed) |
+
+Copy shapes from [`.env.example`](.env.example).
+
+## First deploy (MCP / archive)
+
+1. Create or select an empty website (`hosting_websites_create` or reuse a free subdomain).
+2. Wait until `hosting_websites_list-setups` reports `status: completed` for that domain.
+3. Deploy Node.js source with `hosting_deploy-js-application` (or upload `app.zip` + `hosting_nodejs_start-build`). Archive must exclude `node_modules/`, `.next/`, and `.env*`.
+4. Build settings: framework Next.js; build command `npm run build`; start via Hostinger’s Node runner (`next start` / detected entry).
+5. Create DB: `hosting_databases_setup-website`.
+6. Add `SESSION_SECRET` (and seed vars if needed) via env replace — **full replace**; list existing keys first and keep all of them. Do this **before** the first Node build so `npm run build` can migrate and seed (Hostinger loads Node env into the build).
+7. Deploy / rebuild. The production `build` script runs `prisma migrate deploy` and `tsx prisma/seed.ts` before `next build`. Seed is idempotent (skips if the owner email already exists). After the first successful seed, remove `SEED_OWNER_PASSWORD` from env when convenient.
+8. Verify:
+   - `GET https://DOMAIN/api/health` → `{"ok":true,"database":"ok",...}`
+   - `https://DOMAIN/login` loads
+   - Owner can sign in and reach `/app`
+
+## Git auto-deploy (optional)
+
+1. Connect GitHub in hPanel → Advanced → Git (one-time; API cannot create the OAuth link).
+2. Point auto-deploy at `bkubont/Canopy` and the production branch.
+3. First Node build still needs `hosting_nodejs_start-build` with `source_type: "git"`.
+
+## Local development
+
+```sh
+cp .env.example .env.local
+# point DATABASE_URL at a local MySQL 8 database
+npm install
+npx prisma migrate deploy
+npm run db:seed
+npm run dev
+```
+
+## Legacy static pilot
+
+Do not deploy `legacy-pilot/` as the production site. See [`legacy-pilot/README.md`](legacy-pilot/README.md) for the IndexedDB JSON export path used by a later import feature.
+
+## Hostinger Node layout (Business)
+
+Published app lives under `hbuilds/` (not only `public_html`):
+
+- Current: `/home/<user>/domains/<domain>/hbuilds/current/nodejs`
+- Versioned: `/home/<user>/domains/<domain>/hbuilds/versions/<build-uuid>/nodejs`
+
+`public_html/.htaccess` points Passenger at the current build. File-browser listings of `public_html` may show little more than `.htaccess` after a Node deploy.
