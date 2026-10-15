@@ -1,4 +1,4 @@
-// Canopy Phase 0 — minimal models for signed-in shell
+// Canopy Phase 1 — clients, jobs, notes, protected attachments
 generator client {
   provider = "prisma-client-js"
 }
@@ -15,9 +15,11 @@ model Business {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  users   User[]
-  clients Client[]
-  jobs    Job[]
+  users       User[]
+  clients     Client[]
+  jobs        Job[]
+  notes       Note[]
+  attachments Attachment[]
 
   @@map("businesses")
 }
@@ -34,6 +36,7 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  notes    Note[]
 
   @@index([businessId])
   @@map("users")
@@ -64,16 +67,61 @@ model Job {
   clientId    String    @map("client_id")
   title       String
   siteAddress String?   @map("site_address") @db.Text
+  description String?   @db.Text
   /// Optimistic concurrency counter (used in later phases)
   version     Int       @default(1)
   archivedAt  DateTime? @map("archived_at")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  notes       Note[]
+  attachments Attachment[]
 
   @@index([businessId])
   @@index([clientId])
   @@map("jobs")
+}
+
+model Note {
+  id           String   @id @default(cuid())
+  businessId   String   @map("business_id")
+  jobId        String   @map("job_id")
+  authorUserId String   @map("author_user_id")
+  text         String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  job         Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  author      User         @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  attachments Attachment[]
+
+  @@index([businessId])
+  @@index([jobId])
+  @@map("notes")
+}
+
+model Attachment {
+  id               String   @id @default(cuid())
+  businessId       String   @map("business_id")
+  jobId            String   @map("job_id")
+  noteId           String   @map("note_id")
+  /// Random UUID path segment — never guessable public URLs
+  storageKey       String   @unique @map("storage_key") @db.VarChar(64)
+  thumbStorageKey  String?  @map("thumb_storage_key") @db.VarChar(64)
+  originalFilename String   @map("original_filename") @db.VarChar(255)
+  mimeType         String   @map("mime_type") @db.VarChar(128)
+  sizeBytes        Int      @map("size_bytes")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  job      Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  note     Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([jobId])
+  @@index([noteId])
+  @@map("attachments")
 }

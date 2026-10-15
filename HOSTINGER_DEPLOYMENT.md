@@ -31,8 +31,19 @@ Set these on the Node.js website (hPanel or `hosting_nodejs_replace-environment-
 | `SESSION_SECRET` | Long random string (≥16 chars) for signed session cookies |
 | `SESSION_SECURE` | `true` on HTTPS production |
 | `SEED_OWNER_EMAIL` / `SEED_OWNER_PASSWORD` | Used once with `npm run db:seed` (optional; remove password after seed) |
+| `UPLOAD_DIR` (optional) | Absolute path for private photo files. Default on Hostinger: `<domain-root>/canopy-uploads` (survives `hbuilds` redeploys). Never under `public/` |
 
 Copy shapes from [`.env.example`](.env.example).
+
+## Backups (Phase 1)
+
+| What | Where |
+| --- | --- |
+| Clients / jobs / notes metadata | MySQL — Hostinger account backups + owner Export JSON/CSV from **Settings** |
+| Photo binaries | Private `canopy-uploads` on the hosting account (auth-gated downloads only; no public URLs) |
+| Pilot import | Settings → Import V1 IndexedDB JSON (maps clients, jobs, notes, photos) |
+
+Recommended: enable Hostinger plan backups if available; otherwise export JSON weekly from Settings before major changes. Restore MySQL and `canopy-uploads` together for a full recovery.
 
 ## First deploy (MCP / archive)
 
