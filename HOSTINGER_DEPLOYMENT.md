@@ -43,7 +43,7 @@ Copy shapes from [`.env.example`](.env.example).
 | Photo binaries | Private `canopy-uploads` on the hosting account (auth-gated downloads only; no public URLs) |
 | Pilot import | Settings → Import V1 IndexedDB JSON (maps clients, jobs, notes, photos) |
 
-Phase 2 adds Prisma migration `20261015070000_phase2_visits_assignments` (applied automatically by `npm run build` → `prisma migrate deploy`).
+Phase 3 adds Prisma migration `20261020020000_phase3_stages_kanban_events` (board column, planned visit stage, dump fields, activity events, audit, idempotency — applied automatically by `npm run build` → `prisma migrate deploy`).
 
 Recommended: enable Hostinger plan backups if available; otherwise export JSON weekly from Settings before major changes. Restore MySQL and `canopy-uploads` together for a full recovery.
 

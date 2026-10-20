@@ -58,6 +58,7 @@ export async function GET(request: Request) {
       siteAddress: j.siteAddress,
       description: j.description,
       version: j.version,
+      boardColumn: j.boardColumn,
       archivedAt: j.archivedAt,
       readyForScheduling: j.readyForScheduling,
       canceledAt: j.canceledAt,

@@ -11,6 +11,12 @@ import {
 
 type Worker = { id: string; name: string };
 
+type Badge = {
+  key: string;
+  kind: "stage" | "dump" | "planned";
+  label: string;
+};
+
 type Card = {
   visitId: string;
   jobId: string;
@@ -23,11 +29,24 @@ type Card = {
   workers: Worker[];
   unassigned: boolean;
   href: string;
+  status?: string;
+  badges?: Badge[];
+  canStart?: boolean;
+  canResume?: boolean;
+  resumeStageKey?: string | null;
+  startStageKey?: string | null;
 };
 
 type View = "month" | "week" | "day" | "agenda";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function newRequestId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
 
 export function CalendarPanel() {
   const [view, setView] = useState<View>("month");
@@ -38,6 +57,8 @@ export function CalendarPanel() {
   const [unassignedOnly, setUnassignedOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [jobVersions, setJobVersions] = useState<Record<string, number>>({});
+  const [pendingVisit, setPendingVisit] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,6 +92,58 @@ export function CalendarPanel() {
     }
     return map;
   }, [cards]);
+
+  async function ensureVersion(jobId: string): Promise<number | null> {
+    if (jobVersions[jobId] !== undefined) return jobVersions[jobId];
+    const res = await fetch(`/api/jobs/${jobId}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return null;
+    const version = data.job?.version as number;
+    setJobVersions((prev) => ({ ...prev, [jobId]: version }));
+    return version;
+  }
+
+  async function startOrResume(card: Card, action: "start" | "resume") {
+    const stageKey =
+      action === "resume" ? card.resumeStageKey : card.startStageKey;
+    if (!stageKey) return;
+    setPendingVisit(card.visitId);
+    setError(null);
+    const version = await ensureVersion(card.jobId);
+    if (version == null) {
+      setError("Could not load job version");
+      setPendingVisit(null);
+      return;
+    }
+    const res = await fetch(`/api/jobs/${card.jobId}/stages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        stageKey,
+        action,
+        workDate: card.workDate,
+        visitId: card.visitId,
+        requestId: newRequestId(),
+        expectedVersion: version,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setPendingVisit(null);
+    if (!res.ok) {
+      setError(data.error || "Action failed");
+      setJobVersions((prev) => {
+        const next = { ...prev };
+        delete next[card.jobId];
+        return next;
+      });
+      await load();
+      return;
+    }
+    if (typeof data.version === "number") {
+      setJobVersions((prev) => ({ ...prev, [card.jobId]: data.version }));
+    }
+    await load();
+  }
 
   function shift(delta: number) {
     if (view === "month") {
@@ -108,6 +181,12 @@ export function CalendarPanel() {
       timeZone: "UTC",
     });
   }, [date, view]);
+
+  const cardProps = {
+    pendingVisit,
+    onStart: (c: Card) => void startOrResume(c, "start"),
+    onResume: (c: Card) => void startOrResume(c, "resume"),
+  };
 
   return (
     <div className="stack">
@@ -182,51 +261,111 @@ export function CalendarPanel() {
         </Link>
       </div>
 
+      <p className="muted small">
+        Badges are projections of dated activity (and dump runs in brown). Start
+        / Resume on a day card logs work without moving the board column.
+      </p>
+
       {error ? <p className="error">{error}</p> : null}
       {loading ? <p className="muted">Loading…</p> : null}
 
       {!loading && view === "month" ? (
-        <MonthGrid date={date} byDate={byDate} />
+        <MonthGrid date={date} byDate={byDate} {...cardProps} />
       ) : null}
       {!loading && view === "week" ? (
-        <WeekGrid date={date} byDate={byDate} />
+        <WeekGrid date={date} byDate={byDate} {...cardProps} />
       ) : null}
       {!loading && view === "day" ? (
-        <DayList date={date} cards={byDate.get(date) || []} />
+        <DayList date={date} cards={byDate.get(date) || []} {...cardProps} />
       ) : null}
       {!loading && view === "agenda" ? (
-        <AgendaList cards={cards} />
+        <AgendaList cards={cards} {...cardProps} />
       ) : null}
     </div>
   );
 }
 
-function CardButton({ card }: { card: Card }) {
+type CardHandlers = {
+  pendingVisit: string | null;
+  onStart: (card: Card) => void;
+  onResume: (card: Card) => void;
+};
+
+function CardButton({
+  card,
+  pendingVisit,
+  onStart,
+  onResume,
+  compact,
+}: {
+  card: Card;
+  compact?: boolean;
+} & CardHandlers) {
   const time = card.allDay
     ? "All day"
     : `${card.startTime || "?"}–${card.endTime || "?"}`;
   return (
-    <Link href={card.href} className="cal-card">
-      <strong>{card.jobTitle}</strong>
-      <span className="muted small">
-        {card.clientName} · {time}
-        {card.unassigned
-          ? " · Unassigned"
-          : card.workers.length
-            ? ` · ${card.workers.map((w) => w.name).join(", ")}`
-            : ""}
-      </span>
-    </Link>
+    <div className={`cal-card-wrap${card.status === "unplanned" ? " unplanned" : ""}`}>
+      <Link href={card.href} className="cal-card">
+        <strong>{card.jobTitle}</strong>
+        <span className="muted small">
+          {card.clientName} · {time}
+          {card.status === "unplanned" ? " · Unplanned" : ""}
+          {card.unassigned
+            ? " · Unassigned"
+            : card.workers.length
+              ? ` · ${card.workers.map((w) => w.name).join(", ")}`
+              : ""}
+        </span>
+        {card.badges && card.badges.length > 0 ? (
+          <div className="badge-row">
+            {card.badges.map((b) => (
+              <span
+                key={`${b.kind}-${b.key}`}
+                className={`stage-badge ${b.kind === "dump" ? "dump-badge" : b.kind === "planned" ? "planned-badge" : `stage-${b.key}`}`}
+              >
+                {b.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </Link>
+      {!compact ? (
+        <div className="cal-card-actions">
+          {card.canResume ? (
+            <button
+              type="button"
+              className="btn secondary small"
+              disabled={pendingVisit === card.visitId}
+              onClick={() => onResume(card)}
+            >
+              Resume
+            </button>
+          ) : null}
+          {card.canStart ? (
+            <button
+              type="button"
+              className="btn secondary small"
+              disabled={pendingVisit === card.visitId}
+              onClick={() => onStart(card)}
+            >
+              Start
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
 function MonthGrid({
   date,
   byDate,
+  ...handlers
 }: {
   date: string;
   byDate: Map<string, Card[]>;
-}) {
+} & CardHandlers) {
   const origin = monthGridOrigin(startOfMonth(date));
   const month = date.slice(0, 7);
   const cells = Array.from({ length: 42 }, (_, i) => addDays(origin, i));
@@ -249,7 +388,12 @@ function MonthGrid({
             <div className="cal-daynum">{Number(d.slice(8))}</div>
             <div className="cal-day-cards">
               {list.slice(0, 4).map((c) => (
-                <CardButton key={c.visitId} card={c} />
+                <CardButton
+                  key={c.visitId}
+                  card={c}
+                  compact
+                  {...handlers}
+                />
               ))}
               {list.length > 4 ? (
                 <span className="muted small">+{list.length - 4} more</span>
@@ -265,10 +409,11 @@ function MonthGrid({
 function WeekGrid({
   date,
   byDate,
+  ...handlers
 }: {
   date: string;
   byDate: Map<string, Card[]>;
-}) {
+} & CardHandlers) {
   const origin = weekOrigin(date);
   const days = Array.from({ length: 7 }, (_, i) => addDays(origin, i));
   return (
@@ -280,7 +425,7 @@ function WeekGrid({
           </div>
           <div className="cal-day-cards">
             {(byDate.get(d) || []).map((c) => (
-              <CardButton key={c.visitId} card={c} />
+              <CardButton key={c.visitId} card={c} {...handlers} />
             ))}
             {(byDate.get(d) || []).length === 0 ? (
               <span className="muted small">—</span>
@@ -292,7 +437,11 @@ function WeekGrid({
   );
 }
 
-function DayList({ date, cards }: { date: string; cards: Card[] }) {
+function DayList({
+  date,
+  cards,
+  ...handlers
+}: { date: string; cards: Card[] } & CardHandlers) {
   return (
     <section className="section-block" style={{ borderTop: "none" }}>
       <h3 className="cal-heading">{date}</h3>
@@ -301,7 +450,7 @@ function DayList({ date, cards }: { date: string; cards: Card[] }) {
       ) : (
         <div className="stack-sm">
           {cards.map((c) => (
-            <CardButton key={c.visitId} card={c} />
+            <CardButton key={c.visitId} card={c} {...handlers} />
           ))}
         </div>
       )}
@@ -309,7 +458,7 @@ function DayList({ date, cards }: { date: string; cards: Card[] }) {
   );
 }
 
-function AgendaList({ cards }: { cards: Card[] }) {
+function AgendaList({ cards, ...handlers }: { cards: Card[] } & CardHandlers) {
   if (!cards.length) return <p className="empty">Nothing in the next 28 days.</p>;
   let last = "";
   return (
@@ -322,7 +471,7 @@ function AgendaList({ cards }: { cards: Card[] }) {
             {showDate ? (
               <h3 className="cal-agenda-date">{c.workDate}</h3>
             ) : null}
-            <CardButton card={c} />
+            <CardButton card={c} {...handlers} />
           </div>
         );
       })}
