@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireOwnerSession } from "@/lib/api-auth";
+import { projectBadgesForDay } from "@/lib/board";
 import { prisma } from "@/lib/prisma";
 import {
   addDays,
@@ -9,6 +10,7 @@ import {
   toDateString,
   weekOrigin,
 } from "@/lib/scheduling";
+import { todayInTimezone } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +24,6 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const view = (url.searchParams.get("view") || "month").toLowerCase();
-  const dateParam = url.searchParams.get("date") || todayInTz("America/Detroit");
-  if (!isDateString(dateParam)) {
-    return NextResponse.json({ error: "Invalid date" }, { status: 400 });
-  }
-
   const workerId = url.searchParams.get("workerId");
   const unassigned = url.searchParams.get("unassigned") === "1";
 
@@ -35,6 +32,10 @@ export async function GET(request: Request) {
     select: { timezone: true },
   });
   const timezone = business?.timezone || "America/Detroit";
+  const dateParam = url.searchParams.get("date") || todayInTimezone(timezone);
+  if (!isDateString(dateParam)) {
+    return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+  }
 
   let rangeStart: string;
   let rangeEnd: string; // exclusive
@@ -70,7 +71,12 @@ export async function GET(request: Request) {
         select: {
           id: true,
           title: true,
+          boardColumn: true,
           client: { select: { id: true, name: true } },
+          stages: {
+            select: { key: true, progress: true },
+            orderBy: { sortOrder: "asc" },
+          },
         },
       },
       assignments: {
@@ -101,22 +107,78 @@ export async function GET(request: Request) {
     jobWorkers.set(a.jobId, list);
   }
 
+  const events = jobIds.length
+    ? await prisma.activityEvent.findMany({
+        where: {
+          businessId: auth.session.businessId,
+          jobId: { in: jobIds },
+          workDate: {
+            gte: new Date(`${rangeStart}T00:00:00.000Z`),
+            lt: new Date(`${rangeEnd}T00:00:00.000Z`),
+          },
+        },
+        select: {
+          jobId: true,
+          workDate: true,
+          type: true,
+          stageKey: true,
+          status: true,
+        },
+      })
+    : [];
+
+  const eventsByJobDate = new Map<
+    string,
+    { type: string; stageKey: string | null; status: string }[]
+  >();
+  for (const e of events) {
+    const key = `${e.jobId}|${toDateString(e.workDate)}`;
+    const list = eventsByJobDate.get(key) || [];
+    list.push({
+      type: e.type,
+      stageKey: e.stageKey,
+      status: e.status,
+    });
+    eventsByJobDate.set(key, list);
+  }
+
+  const today = todayInTimezone(timezone);
+
   let cards = visits.map((v) => {
     const visitWorkers = v.assignments.map((a) => a.worker);
     const inherited = jobWorkers.get(v.jobId) || [];
     const byId = new Map<string, { id: string; name: string }>();
     for (const w of [...inherited, ...visitWorkers]) byId.set(w.id, w);
     const workers = [...byId.values()];
+    const workDate = toDateString(v.workDate);
+    const badges = projectBadgesForDay(
+      eventsByJobDate.get(`${v.jobId}|${workDate}`) || [],
+      v.plannedStageKey,
+    );
+    const activeStage = v.job.stages.find((s) => s.progress === "in_progress");
     return {
       visitId: v.id,
       jobId: v.job.id,
       jobTitle: v.job.title,
       clientName: v.job.client.name,
-      workDate: toDateString(v.workDate),
+      workDate,
       allDay: v.allDay,
       startTime: v.startTime,
       endTime: v.endTime,
       notes: v.notes,
+      status: v.status,
+      boardColumn: v.job.boardColumn,
+      plannedStageKey: v.plannedStageKey,
+      badges,
+      canStart: Boolean(
+        activeStage === undefined &&
+          v.job.stages.some((s) => s.progress === "not_started") &&
+          workDate <= today,
+      ),
+      canResume: Boolean(activeStage && workDate <= today),
+      resumeStageKey: activeStage?.key || null,
+      startStageKey:
+        v.job.stages.find((s) => s.progress === "not_started")?.key || null,
       workers,
       unassigned: workers.length === 0,
       href: `/app/jobs/${v.job.id}?visit=${v.id}`,
@@ -133,26 +195,9 @@ export async function GET(request: Request) {
     view,
     date: dateParam,
     timezone,
+    today,
     rangeStart,
     rangeEndExclusive: rangeEnd,
     cards,
   });
-}
-
-function todayInTz(tz: string): string {
-  try {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(new Date());
-    const y = parts.find((p) => p.type === "year")?.value;
-    const m = parts.find((p) => p.type === "month")?.value;
-    const d = parts.find((p) => p.type === "day")?.value;
-    if (y && m && d) return `${y}-${m}-${d}`;
-  } catch {
-    /* fall through */
-  }
-  return new Date().toISOString().slice(0, 10);
 }

@@ -47,12 +47,15 @@ export default async function AppHomePage() {
     <section className="app-main">
       <h1 className="page-title">Owner workspace</h1>
       <p className="muted">
-        Clients, jobs, visits, worker assignments, and calendar — same source of
-        truth. Kanban depth arrives in Phase 3.
+        Clients, jobs, visits, board, dump runs, and calendar badges — one source
+        of truth.
       </p>
 
       <div className="quick-links">
-        <Link className="btn" href="/app/calendar">
+        <Link className="btn" href="/app/board">
+          Board
+        </Link>
+        <Link className="btn secondary" href="/app/calendar">
           Calendar
         </Link>
         <Link className="btn secondary" href="/app/clients">

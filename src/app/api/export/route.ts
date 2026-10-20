@@ -19,8 +19,17 @@ export async function GET(request: Request) {
   const format = (url.searchParams.get("format") || "json").toLowerCase();
   const bid = auth.session.businessId;
 
-  const [clients, jobs, notes, attachments, workers, visits, assignments] =
-    await Promise.all([
+  const [
+    clients,
+    jobs,
+    notes,
+    attachments,
+    workers,
+    visits,
+    assignments,
+    tasks,
+    activityEvents,
+  ] = await Promise.all([
       prisma.client.findMany({
         where: { businessId: bid },
         orderBy: { name: "asc" },
@@ -65,6 +74,14 @@ export async function GET(request: Request) {
         where: { businessId: bid },
         orderBy: { createdAt: "asc" },
       }),
+      prisma.task.findMany({
+        where: { businessId: bid },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.activityEvent.findMany({
+        where: { businessId: bid },
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
 
   if (format === "csv") {
@@ -85,7 +102,7 @@ export async function GET(request: Request) {
     ].join("\n");
 
     const jobLines = [
-      "id,client_id,client_name,title,site_address,description,ready_for_scheduling,canceled_at,archived_at,created_at",
+      "id,client_id,client_name,title,site_address,description,board_column,version,ready_for_scheduling,canceled_at,archived_at,created_at",
       ...jobs.map((j) =>
         [
           j.id,
@@ -94,6 +111,8 @@ export async function GET(request: Request) {
           csvEscape(j.title),
           csvEscape(j.siteAddress),
           csvEscape(j.description),
+          j.boardColumn,
+          String(j.version),
           j.readyForScheduling ? "1" : "0",
           j.canceledAt?.toISOString() ?? "",
           j.archivedAt?.toISOString() ?? "",
@@ -103,7 +122,7 @@ export async function GET(request: Request) {
     ].join("\n");
 
     const visitLines = [
-      "id,job_id,work_date,all_day,start_time,end_time,status,notes",
+      "id,job_id,work_date,all_day,start_time,end_time,status,planned_stage_key,notes",
       ...visits.map((v) =>
         [
           v.id,
@@ -113,7 +132,42 @@ export async function GET(request: Request) {
           csvEscape(v.startTime),
           csvEscape(v.endTime),
           v.status,
+          csvEscape(v.plannedStageKey),
           csvEscape(v.notes),
+        ].join(","),
+      ),
+    ].join("\n");
+
+    const taskLines = [
+      "id,job_id,title,kind,stage_key,work_date,destination,dump_status,done",
+      ...tasks.map((t) =>
+        [
+          t.id,
+          t.jobId,
+          csvEscape(t.title),
+          t.kind,
+          csvEscape(t.stageKey),
+          t.workDate ? toDateString(t.workDate) : "",
+          csvEscape(t.destination),
+          csvEscape(t.dumpStatus),
+          t.done ? "1" : "0",
+        ].join(","),
+      ),
+    ].join("\n");
+
+    const eventLines = [
+      "id,job_id,visit_id,type,stage_key,work_date,status,message,created_at",
+      ...activityEvents.map((e) =>
+        [
+          e.id,
+          e.jobId,
+          e.visitId ?? "",
+          e.type,
+          csvEscape(e.stageKey),
+          toDateString(e.workDate),
+          e.status,
+          csvEscape(e.message),
+          e.createdAt.toISOString(),
         ].join(","),
       ),
     ].join("\n");
@@ -146,7 +200,7 @@ export async function GET(request: Request) {
       ),
     ].join("\n");
 
-    const body = `# clients\n${clientLines}\n\n# jobs\n${jobLines}\n\n# workers\n${workerLines}\n\n# visits\n${visitLines}\n\n# assignments\n${assignmentLines}\n`;
+    const body = `# clients\n${clientLines}\n\n# jobs\n${jobLines}\n\n# workers\n${workerLines}\n\n# visits\n${visitLines}\n\n# assignments\n${assignmentLines}\n\n# tasks\n${taskLines}\n\n# activity_events\n${eventLines}\n`;
     return new NextResponse(body, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
@@ -170,6 +224,14 @@ export async function GET(request: Request) {
       workDate: toDateString(v.workDate),
     })),
     assignments,
+    tasks: tasks.map((t) => ({
+      ...t,
+      workDate: t.workDate ? toDateString(t.workDate) : null,
+    })),
+    activityEvents: activityEvents.map((e) => ({
+      ...e,
+      workDate: toDateString(e.workDate),
+    })),
     notes,
     attachmentsManifest: attachments,
     backupNotes:

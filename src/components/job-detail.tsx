@@ -39,6 +39,7 @@ type Visit = {
   startTime: string | null;
   endTime: string | null;
   status: string;
+  plannedStageKey: string | null;
   notes: string | null;
   assignments: { id: string; workerId: string; workerName: string }[];
 };
@@ -57,9 +58,51 @@ type Assignment = {
   conflictOverrideReason: string | null;
 };
 
-type Task = { id: string; title: string; kind: string; done: boolean };
+type Task = {
+  id: string;
+  title: string;
+  kind: string;
+  stageKey: string | null;
+  workDate: string | null;
+  destination: string | null;
+  details: string | null;
+  dumpStatus: string | null;
+  dumpStatusLabel: string;
+  done: boolean;
+};
+
+type Activity = {
+  id: string;
+  type: string;
+  stageKey: string | null;
+  workDate: string;
+  status: string;
+  message: string | null;
+  createdAt: string;
+  user: { name: string | null; email: string };
+};
 
 type WorkerOpt = { id: string; name: string };
+
+const BOARD_DESTINATIONS = [
+  ["ready", "Ready"],
+  ["estimate", "Estimate"],
+  ["prep", "Prep"],
+  ["tree_work", "Tree Work"],
+  ["cleanup", "Cleanup"],
+  ["complete", "Complete"],
+] as const;
+
+function newRequestId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+function todayLocal(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 type Job = {
   id: string;
@@ -71,6 +114,8 @@ type Job = {
   canceledAt: string | null;
   schedulingState: string;
   version: number;
+  boardColumn: string;
+  boardColumnLabel: string;
   client: {
     id: string;
     name: string;
@@ -79,9 +124,11 @@ type Job = {
     address: string | null;
   };
   stages: Stage[];
+  parallelStages: Stage[];
   visits: Visit[];
   assignments: Assignment[];
   tasks: Task[];
+  activity: Activity[];
   notes: Note[];
 };
 
@@ -106,6 +153,11 @@ export function JobDetail({ jobId }: { jobId: string }) {
   const [overrideReason, setOverrideReason] = useState("");
   const [conflictMsg, setConflictMsg] = useState<string | null>(null);
   const [taskTitle, setTaskTitle] = useState("");
+  const [taskKind, setTaskKind] = useState<"general" | "dump">("general");
+  const [taskDestination, setTaskDestination] = useState("");
+  const [taskWorkDate, setTaskWorkDate] = useState("");
+  const [actionWorkDate, setActionWorkDate] = useState(todayLocal);
+  const [moveDestination, setMoveDestination] = useState("prep");
 
   const load = useCallback(async () => {
     const [jobRes, workersRes] = await Promise.all([
@@ -119,7 +171,13 @@ export function JobDetail({ jobId }: { jobId: string }) {
       return;
     }
     const j = data.job as Job;
-    setJob(j);
+    setJob({
+      ...j,
+      activity: j.activity || [],
+      parallelStages: j.parallelStages || [],
+      boardColumn: j.boardColumn || "ready",
+      boardColumnLabel: j.boardColumnLabel || "Ready",
+    });
     setTitle(j.title);
     setSiteAddress(j.siteAddress || "");
     setDescription(j.description || "");
@@ -269,7 +327,12 @@ export function JobDetail({ jobId }: { jobId: string }) {
     const res = await fetch(`/api/jobs/${jobId}/tasks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: taskTitle }),
+      body: JSON.stringify({
+        title: taskTitle,
+        kind: taskKind,
+        destination: taskDestination || null,
+        workDate: taskWorkDate || null,
+      }),
     });
     setPending(false);
     if (!res.ok) {
@@ -278,6 +341,115 @@ export function JobDetail({ jobId }: { jobId: string }) {
       return;
     }
     setTaskTitle("");
+    setTaskDestination("");
+    setTaskWorkDate("");
+    await load();
+  }
+
+  async function stageAction(
+    stageKey: string,
+    action: "complete" | "reopen" | "not_needed" | "start" | "resume",
+  ) {
+    if (!job) return;
+    setPending(true);
+    setError(null);
+    const res = await fetch(`/api/jobs/${jobId}/stages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        stageKey,
+        action,
+        workDate: actionWorkDate,
+        visitId: selectedVisit || null,
+        requestId: newRequestId(),
+        expectedVersion: job.version,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setPending(false);
+    if (!res.ok) {
+      setError(
+        data.code === "VERSION_CONFLICT"
+          ? "Stale version — reloaded. Try again."
+          : data.error || "Stage action failed",
+      );
+      await load();
+      return;
+    }
+    await load();
+  }
+
+  async function moveBoard() {
+    if (!job) return;
+    setPending(true);
+    setError(null);
+    const res = await fetch(`/api/jobs/${jobId}/kanban`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        destination: moveDestination,
+        workDate: actionWorkDate,
+        visitId: selectedVisit || null,
+        requestId: newRequestId(),
+        expectedVersion: job.version,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setPending(false);
+    if (!res.ok) {
+      setError(data.error || "Move failed");
+      await load();
+      return;
+    }
+    await load();
+  }
+
+  async function advanceDump(taskId: string) {
+    if (!job) return;
+    setPending(true);
+    setError(null);
+    const res = await fetch(`/api/tasks/${taskId}/dump`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workDate: actionWorkDate,
+        visitId: selectedVisit || null,
+        requestId: newRequestId(),
+        expectedVersion: job.version,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setPending(false);
+    if (!res.ok) {
+      setError(data.error || "Dump advance failed");
+      await load();
+      return;
+    }
+    await load();
+  }
+
+  async function reverseEvent(eventId: string) {
+    if (!job) return;
+    const reason = window.prompt("Reason for reversing this event?");
+    if (!reason?.trim()) return;
+    setPending(true);
+    setError(null);
+    const res = await fetch(`/api/jobs/${jobId}/events/${eventId}/reverse`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reason: reason.trim(),
+        requestId: newRequestId(),
+        expectedVersion: job.version,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setPending(false);
+    if (!res.ok) {
+      setError(data.error || "Reverse failed");
+      await load();
+      return;
+    }
     await load();
   }
 
@@ -304,7 +476,26 @@ export function JobDetail({ jobId }: { jobId: string }) {
             <span className={`pill state-${job.schedulingState}`}>
               {stateLabel}
             </span>
+            {" · Board: "}
+            <span className={`pill lane-pill lane-${job.boardColumn}`}>
+              {job.boardColumnLabel}
+            </span>
+            {" · v"}
+            {job.version}
           </p>
+          {job.parallelStages.length > 0 ? (
+            <div className="badge-row" style={{ marginTop: "0.4rem" }}>
+              {job.parallelStages.map((s) => (
+                <span
+                  key={s.key}
+                  className={`stage-badge stage-${s.key}`}
+                  title={s.progressLabel}
+                >
+                  {s.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="actions">
           {!job.canceledAt && job.schedulingState === "unscheduled" ? (
@@ -422,12 +613,19 @@ export function JobDetail({ jobId }: { jobId: string }) {
                 <div>
                   <div className="list-title">
                     {v.workDate}
-                    {v.status === "canceled" ? " (canceled)" : ""}
+                    {v.status === "canceled"
+                      ? " (canceled)"
+                      : v.status === "unplanned"
+                        ? " (unplanned work)"
+                        : ""}
                   </div>
                   <div className="muted small">
                     {v.allDay
                       ? "All day"
                       : `${v.startTime || "?"}–${v.endTime || "?"}`}
+                    {v.plannedStageKey
+                      ? ` · Planned: ${v.plannedStageKey}`
+                      : ""}
                     {v.assignments.length
                       ? ` · ${v.assignments.map((a) => a.workerName).join(", ")}`
                       : " · Unassigned"}
@@ -622,39 +820,169 @@ export function JobDetail({ jobId }: { jobId: string }) {
       </section>
 
       <section className="section-block">
+        <h2>Board & work date</h2>
+        <p className="muted small">
+          Moves and stage actions use this work date. Missing visits become
+          Unplanned work. Future dates only set planned stage on that visit.
+        </p>
+        <div className="inline-form">
+          <div className="field">
+            <label htmlFor="action-date">Work date</label>
+            <input
+              id="action-date"
+              type="date"
+              value={actionWorkDate}
+              onChange={(e) => setActionWorkDate(e.target.value)}
+            />
+          </div>
+          <div className="field grow">
+            <label htmlFor="move-dest">Move board to</label>
+            <select
+              id="move-dest"
+              value={moveDestination}
+              onChange={(e) => setMoveDestination(e.target.value)}
+            >
+              {BOARD_DESTINATIONS.map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            className="btn"
+            type="button"
+            disabled={pending}
+            onClick={() => void moveBoard()}
+          >
+            Move
+          </button>
+        </div>
+      </section>
+
+      <section className="section-block">
         <h2>Stages</h2>
         <p className="muted small">
-          Placeholders for Phase 3 kanban. Assignments can already target a
+          Progress is Not started / In progress / Completed / Not needed.
+          Complete and reopen are explicit — leaving a column never completes a
           stage.
         </p>
-        <ul className="stage-list">
+        <ul className="stage-list stage-list-actions">
           {job.stages.map((s) => (
             <li key={s.key} className={`stage-chip stage-${s.key}`}>
               <strong>{s.label}</strong>
               <span>{s.progressLabel}</span>
+              <div className="toolbar" style={{ marginTop: "0.45rem" }}>
+                {s.progress === "not_started" ? (
+                  <button
+                    type="button"
+                    className="btn secondary small"
+                    disabled={pending}
+                    onClick={() => void stageAction(s.key, "start")}
+                  >
+                    Start
+                  </button>
+                ) : null}
+                {s.progress === "in_progress" ? (
+                  <button
+                    type="button"
+                    className="btn secondary small"
+                    disabled={pending}
+                    onClick={() => void stageAction(s.key, "resume")}
+                  >
+                    Resume
+                  </button>
+                ) : null}
+                {s.progress !== "completed" && s.progress !== "not_needed" ? (
+                  <button
+                    type="button"
+                    className="btn small"
+                    disabled={pending}
+                    onClick={() => void stageAction(s.key, "complete")}
+                  >
+                    Complete
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn secondary small"
+                    disabled={pending}
+                    onClick={() => void stageAction(s.key, "reopen")}
+                  >
+                    Reopen
+                  </button>
+                )}
+                {s.progress !== "not_needed" ? (
+                  <button
+                    type="button"
+                    className="btn secondary small"
+                    disabled={pending}
+                    onClick={() => void stageAction(s.key, "not_needed")}
+                  >
+                    Not needed
+                  </button>
+                ) : null}
+              </div>
             </li>
           ))}
         </ul>
       </section>
 
       <section className="section-block">
-        <h2>Tasks (placeholder)</h2>
+        <h2>Tasks & dump runs</h2>
         <p className="muted small">
-          Minimal tasks for assignment targets. Dump-run depth arrives in Phase
-          3.
+          Dump runs are repeatable (Depart → Return → Done) and show brown
+          calendar badges. They never move the primary kanban column.
         </p>
-        <form className="inline-form" onSubmit={addTask}>
-          <div className="field grow">
-            <label htmlFor="task-title">Title</label>
-            <input
-              id="task-title"
-              value={taskTitle}
-              onChange={(e) => setTaskTitle(e.target.value)}
-              placeholder="e.g. Brush dump run"
-            />
+        <form className="stack-sm" onSubmit={addTask}>
+          <div className="inline-form">
+            <div className="field grow">
+              <label htmlFor="task-title">Title</label>
+              <input
+                id="task-title"
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+                placeholder="e.g. Brush dump run"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="task-kind">Type</label>
+              <select
+                id="task-kind"
+                value={taskKind}
+                onChange={(e) =>
+                  setTaskKind(e.target.value === "dump" ? "dump" : "general")
+                }
+              >
+                <option value="general">General</option>
+                <option value="dump">Dump run</option>
+              </select>
+            </div>
           </div>
+          {taskKind === "dump" ? (
+            <div className="inline-form">
+              <div className="field grow">
+                <label htmlFor="task-dest">Destination</label>
+                <input
+                  id="task-dest"
+                  value={taskDestination}
+                  onChange={(e) => setTaskDestination(e.target.value)}
+                  placeholder="Dump site"
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="task-date">Date</label>
+                <input
+                  id="task-date"
+                  type="date"
+                  value={taskWorkDate}
+                  onChange={(e) => setTaskWorkDate(e.target.value)}
+                />
+              </div>
+            </div>
+          ) : null}
           <button className="btn secondary" type="submit" disabled={pending}>
-            Add task
+            Add {taskKind === "dump" ? "dump run" : "task"}
           </button>
         </form>
         {job.tasks.length === 0 ? (
@@ -663,11 +991,83 @@ export function JobDetail({ jobId }: { jobId: string }) {
           <ul className="list">
             {job.tasks.map((t) => (
               <li key={t.id} className="list-row">
-                <span>
-                  {t.done ? "✓ " : "○ "}
-                  {t.title}{" "}
-                  <span className="muted small">({t.kind})</span>
-                </span>
+                <div>
+                  <strong>
+                    {t.done ? "✓ " : "○ "}
+                    {t.title}
+                  </strong>
+                  <div className="muted small">
+                    {t.kind === "dump" ? (
+                      <>
+                        Dump · {t.dumpStatusLabel}
+                        {t.destination ? ` · ${t.destination}` : ""}
+                        {t.workDate ? ` · ${t.workDate}` : ""}
+                      </>
+                    ) : (
+                      <>General{t.stageKey ? ` · ${t.stageKey}` : ""}</>
+                    )}
+                  </div>
+                </div>
+                {t.kind === "dump" && !t.done ? (
+                  <button
+                    className="btn small"
+                    type="button"
+                    disabled={pending}
+                    onClick={() => void advanceDump(t.id)}
+                  >
+                    {!t.dumpStatus
+                      ? "Depart"
+                      : t.dumpStatus === "departed"
+                        ? "Return"
+                        : "Done"}
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="section-block">
+        <h2>Activity</h2>
+        <p className="muted small">
+          Dated events drive calendar badges. Reversals keep an audit trail and
+          drop the badge projection.
+        </p>
+        {(job.activity || []).length === 0 ? (
+          <p className="empty">No activity yet.</p>
+        ) : (
+          <ul className="list">
+            {job.activity.map((e) => (
+              <li key={e.id} className="list-row">
+                <div>
+                  <div>
+                    <span className={`pill ${e.status === "reversed" ? "bad" : ""}`}>
+                      {e.type}
+                    </span>{" "}
+                    {e.stageKey ? (
+                      <span className={`stage-badge stage-${e.stageKey}`}>
+                        {e.stageKey}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="muted small">
+                    {e.workDate} · {e.message || "—"} ·{" "}
+                    {e.user.name || e.user.email}
+                  </div>
+                </div>
+                {e.status === "valid" &&
+                e.type !== "reversal" &&
+                e.type !== "correction" ? (
+                  <button
+                    type="button"
+                    className="btn secondary small"
+                    disabled={pending}
+                    onClick={() => void reverseEvent(e.id)}
+                  >
+                    Reverse
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>

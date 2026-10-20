@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireOwnerSession } from "@/lib/api-auth";
+import { boardColumnLabel, dumpStatusLabel, parallelStageKeys } from "@/lib/board";
 import { ensureJobStages } from "@/lib/job-stages";
 import { prisma } from "@/lib/prisma";
 import { deriveSchedulingState, toDateString } from "@/lib/scheduling";
@@ -59,7 +60,13 @@ export async function GET(_request: Request, ctx: Ctx) {
       },
       tasks: {
         orderBy: { createdAt: "asc" },
-        select: { id: true, title: true, kind: true, done: true },
+      },
+      activityEvents: {
+        orderBy: [{ workDate: "desc" }, { createdAt: "desc" }],
+        take: 80,
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+        },
       },
       notes: {
         orderBy: { createdAt: "desc" },
@@ -90,6 +97,8 @@ export async function GET(_request: Request, ctx: Ctx) {
     visits: job.visits,
   });
 
+  const parallel = parallelStageKeys(job.boardColumn, job.stages);
+
   return NextResponse.json({
     job: {
       id: job.id,
@@ -97,6 +106,8 @@ export async function GET(_request: Request, ctx: Ctx) {
       siteAddress: job.siteAddress,
       description: job.description,
       version: job.version,
+      boardColumn: job.boardColumn,
+      boardColumnLabel: boardColumnLabel(job.boardColumn),
       archivedAt: job.archivedAt,
       readyForScheduling: job.readyForScheduling,
       canceledAt: job.canceledAt,
@@ -109,6 +120,15 @@ export async function GET(_request: Request, ctx: Ctx) {
         progress: s.progress,
         progressLabel: progressLabel(s.progress),
       })),
+      parallelStages: parallel.map((key) => {
+        const s = job.stages.find((x) => x.key === key)!;
+        return {
+          key: s.key,
+          label: s.label,
+          progress: s.progress,
+          progressLabel: progressLabel(s.progress),
+        };
+      }),
       /** @deprecated use stages — kept for Phase 1 UI compatibility */
       stagesPlaceholder: job.stages.map((s) => ({
         key: s.key,
@@ -122,6 +142,7 @@ export async function GET(_request: Request, ctx: Ctx) {
         startTime: v.startTime,
         endTime: v.endTime,
         status: v.status,
+        plannedStageKey: v.plannedStageKey,
         notes: v.notes,
         canceledAt: v.canceledAt,
         assignments: v.assignments.map((a) => ({
@@ -151,7 +172,30 @@ export async function GET(_request: Request, ctx: Ctx) {
           : null,
         conflictOverrideReason: a.conflictOverrideReason,
       })),
-      tasks: job.tasks,
+      tasks: job.tasks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        kind: t.kind,
+        stageKey: t.stageKey,
+        workDate: t.workDate ? toDateString(t.workDate) : null,
+        destination: t.destination,
+        details: t.details,
+        dumpStatus: t.dumpStatus,
+        dumpStatusLabel: dumpStatusLabel(t.dumpStatus),
+        done: t.done,
+      })),
+      activity: job.activityEvents.map((e) => ({
+        id: e.id,
+        type: e.type,
+        stageKey: e.stageKey,
+        workDate: toDateString(e.workDate),
+        status: e.status,
+        message: e.message,
+        payload: e.payload,
+        reversesEventId: e.reversesEventId,
+        createdAt: e.createdAt,
+        user: e.user,
+      })),
       notes: job.notes.map((n) => ({
         id: n.id,
         text: n.text,

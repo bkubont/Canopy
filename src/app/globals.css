@@ -704,6 +704,218 @@ input {
   min-height: 8rem;
 }
 
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.stage-badge {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.3;
+  background: color-mix(in srgb, #8a8f98 18%, white);
+  color: #3d4248;
+}
+
+.stage-badge.stage-estimate {
+  background: color-mix(in srgb, #7c5cbf 22%, white);
+  color: #4a3478;
+}
+.stage-badge.stage-prep {
+  background: color-mix(in srgb, #c48a2a 22%, white);
+  color: #6a4a12;
+}
+.stage-badge.stage-tree_work {
+  background: color-mix(in srgb, #3a6ea5 22%, white);
+  color: #1e3f62;
+}
+.stage-badge.stage-cleanup {
+  background: color-mix(in srgb, #3d8f5a 22%, white);
+  color: #1f5232;
+}
+.stage-badge.dump-badge {
+  background: color-mix(in srgb, #6b4423 24%, white);
+  color: #4a2e16;
+}
+.stage-badge.planned-badge {
+  border: 1px dashed color-mix(in srgb, var(--canopy-forest) 40%, transparent);
+  background: transparent;
+}
+
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(160px, 1fr));
+  gap: 0.65rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.kanban-lane {
+  min-width: 160px;
+  border-radius: 14px;
+  background: color-mix(in srgb, white 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--canopy-forest) 12%, transparent);
+  display: flex;
+  flex-direction: column;
+  min-height: 16rem;
+}
+
+.kanban-lane-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--canopy-forest) 12%, transparent);
+}
+
+.kanban-lane-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+
+.kanban-lane-body {
+  padding: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.kanban-card {
+  padding: 0.65rem 0.7rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, white 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--canopy-forest) 12%, transparent);
+}
+
+.kanban-card-title {
+  font-weight: 650;
+  text-decoration: none;
+  color: var(--canopy-ink);
+}
+
+.kanban-card-title:hover {
+  color: var(--canopy-forest);
+}
+
+.kanban-card-actions {
+  margin-top: 0.45rem;
+}
+
+.lane-ready .kanban-lane-head {
+  border-top: 3px solid #8a8f98;
+}
+.lane-estimate .kanban-lane-head {
+  border-top: 3px solid #7c5cbf;
+}
+.lane-prep .kanban-lane-head {
+  border-top: 3px solid #c48a2a;
+}
+.lane-tree_work .kanban-lane-head {
+  border-top: 3px solid #3a6ea5;
+}
+.lane-cleanup .kanban-lane-head {
+  border-top: 3px solid #3d8f5a;
+}
+.lane-complete .kanban-lane-head {
+  border-top: 3px solid #1f5232;
+}
+
+.lane-pill.lane-estimate {
+  background: color-mix(in srgb, #7c5cbf 22%, white);
+  color: #4a3478;
+}
+.lane-pill.lane-prep {
+  background: color-mix(in srgb, #c48a2a 22%, white);
+  color: #6a4a12;
+}
+.lane-pill.lane-tree_work {
+  background: color-mix(in srgb, #3a6ea5 22%, white);
+  color: #1e3f62;
+}
+.lane-pill.lane-cleanup {
+  background: color-mix(in srgb, #3d8f5a 22%, white);
+  color: #1f5232;
+}
+.lane-pill.lane-complete {
+  background: color-mix(in srgb, #1f5232 22%, white);
+  color: #143520;
+}
+.lane-pill.lane-ready {
+  background: color-mix(in srgb, #8a8f98 22%, white);
+  color: #3d4248;
+}
+
+.dialog-back {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 46, 36, 0.35);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+  padding: 1rem;
+}
+
+.dialog {
+  width: min(420px, 100%);
+  padding: 1.25rem;
+  border-radius: 16px;
+  background: #f7faf7;
+  border: 1px solid color-mix(in srgb, var(--canopy-forest) 16%, transparent);
+  box-shadow: 0 20px 48px var(--canopy-shadow);
+}
+
+.dialog h2 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.move-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  margin: 0.85rem 0 1rem;
+}
+
+.cal-card-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cal-card-wrap.unplanned .cal-card {
+  border-left-color: #6b4423;
+  border-style: dashed;
+}
+
+.cal-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.empty-lane {
+  margin: 0.35rem 0;
+}
+
+.stage-list-actions .stage-chip {
+  min-height: 7rem;
+}
+
+@media (max-width: 960px) {
+  .kanban {
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+  }
+}
+
 @media (max-width: 640px) {
   .list-row {
     flex-direction: column;
@@ -720,5 +932,9 @@ input {
 
   .cal-day {
     min-height: 4.5rem;
+  }
+
+  .kanban {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
   }
 }

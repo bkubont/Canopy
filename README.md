@@ -6,14 +6,15 @@ The original browser-only IndexedDB pilot is quarantined in [`legacy-pilot/`](le
 
 ## Current phase
 
-**Phase 1** — clients, jobs, notes, protected photos:
+**Phase 3** — stages, tasks, dump runs, kanban, calendar badges:
 
-- Client folders (name-only OK) and jobs (client + title OK)
-- Archive vs permanent delete (owner confirm)
-- Job detail shell: client, site, stage placeholders, notes feed
-- Notes with text and/or photos (JPEG/PNG/HEIC → browser-compatible preview)
-- Auth-gated attachment downloads (no public guessable URLs)
-- Owner export (JSON/CSV) and V1 IndexedDB JSON import
+- Four JobStage rows per job (Not started / In progress / Completed / Not needed)
+- Board: Ready → Estimate → Prep → Tree Work → Cleanup → Complete
+- Kanban moves with work date, visit, requestId, expected version (idempotent)
+- Past/today moves update board + events; future moves set planned stage only
+- Missing visit → Unplanned work visit; explicit stage complete/reopen
+- Dump runs (Depart / Return / Done) with brown calendar badges
+- Daily badges as activity-event projections; Start/Resume without column change
 
 ## Local setup
 
