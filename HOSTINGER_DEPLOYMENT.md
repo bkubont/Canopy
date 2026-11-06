@@ -35,17 +35,36 @@ Set these on the Node.js website (hPanel or `hosting_nodejs_replace-environment-
 
 Copy shapes from [`.env.example`](.env.example).
 
-## Backups (Phase 1–2)
+## Backups and restore (owner controls)
 
-| What | Where |
+Owner controls hosting, MySQL, photo disk, and recovery from hPanel + in-app export. Nothing here is automated by Canopy itself beyond the Settings export buttons.
+
+| What | Where / control |
 | --- | --- |
-| Clients / jobs / notes / visits / workers / assignments | MySQL — Hostinger account backups + owner Export JSON/CSV from **Settings** |
-| Photo binaries | Private `canopy-uploads` on the hosting account (auth-gated downloads only; no public URLs) |
+| Clients, jobs, visits, workers, assignments, tasks, stages, activity events, notes metadata | MySQL on the website order — Hostinger account/plan backups + **Settings → Export JSON/CSV** |
+| Photo binaries | Private `canopy-uploads` under the domain root (auth-gated `/api/attachments/{id}` only; never under `public/`) |
+| Session / secrets | Hostinger Node.js environment variables (`SESSION_SECRET`, `DATABASE_URL`, …) — owner-managed; never in git |
 | Pilot import | Settings → Import V1 IndexedDB JSON (maps clients, jobs, notes, photos) |
 
-Phase 3 adds Prisma migration `20261020020000_phase3_stages_kanban_events` (board column, planned visit stage, dump fields, activity events, audit, idempotency — applied automatically by `npm run build` → `prisma migrate deploy`).
+Phase 3 migration `20261020020000_phase3_stages_kanban_events` (board column, planned visit stage, dump fields, activity events, audit, idempotency) is applied by `npm run build` → `prisma migrate deploy`. Phase 4 does not add a schema migration.
 
-Recommended: enable Hostinger plan backups if available; otherwise export JSON weekly from Settings before major changes. Restore MySQL and `canopy-uploads` together for a full recovery.
+### Recommended backup schedule
+
+1. **Weekly** (or before any deploy / major change): Settings → Download JSON (and optionally CSV). Keep the file off the server.
+2. **Hostinger plan backups**: enable if the Business/Cloud plan includes them; confirm MySQL + website files are covered.
+3. **Photo disk**: verify `UPLOAD_DIR` / `canopy-uploads` is outside `hbuilds` so redeploys do not wipe photos; include that directory in any file-level backup.
+
+### Restore procedure
+
+1. Prefer restoring **MySQL and `canopy-uploads` together** from the same Hostinger backup point so attachment IDs still match files.
+2. Redeploy the Node app if the build is missing or broken (`hosting_deploy` / rebuild); env vars must already be present.
+3. Verify `GET /api/health` → `{"ok":true,"database":"ok"}`, then sign in and spot-check a client, job, note photo.
+4. Export JSON alone is a **records** backup (clients/jobs/visits/assignments/tasks/events/notes + attachment ID manifest). It does **not** rehydrate photo binaries; use Hostinger file restore for those.
+5. Pilot Import **adds** mapped V1 records; it does not wipe production. Prefer labeled `TEST —` clients for drills, then archive/delete them.
+
+### Test records
+
+Segregate acceptance/demo data with a clear prefix (e.g. `TEST —`). Archive or permanently delete those clients/jobs after handoff so the live folder is owner-only production data.
 
 ## First deploy (MCP / archive)
 

@@ -795,6 +795,16 @@ input {
   border: 1px solid color-mix(in srgb, var(--canopy-forest) 12%, transparent);
 }
 
+.kanban-card.is-pending {
+  opacity: 0.65;
+  outline: 1px dashed color-mix(in srgb, var(--canopy-forest) 45%, transparent);
+}
+
+.kanban-card.is-failed {
+  border-color: color-mix(in srgb, #b42318 55%, transparent);
+  background: color-mix(in srgb, #b42318 8%, white);
+}
+
 .kanban-card-title {
   font-weight: 650;
   text-decoration: none;
