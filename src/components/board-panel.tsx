@@ -42,16 +42,37 @@ function todayLocal(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function moveCardOptimistically(
+  cols: Column[],
+  cardId: string,
+  destination: string,
+): Column[] {
+  let moved: Card | null = null;
+  const without = cols.map((col) => {
+    const idx = col.cards.findIndex((c) => c.id === cardId);
+    if (idx < 0) return col;
+    moved = { ...col.cards[idx], boardColumn: destination };
+    return { ...col, cards: col.cards.filter((c) => c.id !== cardId) };
+  });
+  if (!moved) return cols;
+  return without.map((col) =>
+    col.key === destination
+      ? { ...col, cards: [moved as Card, ...col.cards] }
+      : col,
+  );
+}
+
 export function BoardPanel() {
   const [columns, setColumns] = useState<Column[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workDate, setWorkDate] = useState(todayLocal);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [failedId, setFailedId] = useState<string | null>(null);
   const [moveFor, setMoveFor] = useState<Card | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { quiet?: boolean }) => {
+    if (!opts?.quiet) setLoading(true);
     setError(null);
     const res = await fetch("/api/board");
     const data = await res.json().catch(() => ({}));
@@ -69,8 +90,14 @@ export function BoardPanel() {
   }, [load]);
 
   async function moveCard(card: Card, destination: string) {
+    const priorColumns = columns;
     setPendingId(card.id);
+    setFailedId(null);
     setError(null);
+    setMoveFor(null);
+    // Optimistic: show the card in the destination lane immediately.
+    setColumns((cols) => moveCardOptimistically(cols, card.id, destination));
+
     const res = await fetch(`/api/jobs/${card.id}/kanban`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -83,17 +110,22 @@ export function BoardPanel() {
     });
     const data = await res.json().catch(() => ({}));
     setPendingId(null);
-    setMoveFor(null);
     if (!res.ok) {
+      // Restore prior kanban position; clear pending; mark failed briefly.
+      setColumns(priorColumns);
+      setFailedId(card.id);
       setError(
         data.code === "VERSION_CONFLICT"
-          ? "Someone else updated this job — reload and try again."
-          : data.error || "Move failed",
+          ? "Someone else updated this job — board restored. Reload and try again."
+          : data.error || "Move failed — card restored to its previous column.",
       );
-      await load();
+      // Reconcile with server in case another tab changed the board.
+      await load({ quiet: true });
+      window.setTimeout(() => setFailedId((id) => (id === card.id ? null : id)), 4000);
       return;
     }
-    await load();
+    setFailedId(null);
+    await load({ quiet: true });
   }
 
   return (
@@ -134,11 +166,21 @@ export function BoardPanel() {
                 <p className="muted small empty-lane">Empty</p>
               ) : (
                 col.cards.map((card) => (
-                  <article key={card.id} className="kanban-card">
+                  <article
+                    key={card.id}
+                    className={`kanban-card${pendingId === card.id ? " is-pending" : ""}${failedId === card.id ? " is-failed" : ""}`}
+                    aria-busy={pendingId === card.id}
+                  >
                     <Link href={card.href} className="kanban-card-title">
                       {card.title}
                     </Link>
                     <p className="muted small">{card.clientName}</p>
+                    {pendingId === card.id ? (
+                      <p className="muted small">Saving move…</p>
+                    ) : null}
+                    {failedId === card.id ? (
+                      <p className="error small">Move failed — restored</p>
+                    ) : null}
                     {card.parallelStages.length > 0 ? (
                       <div className="badge-row">
                         {card.parallelStages.map((s) => (

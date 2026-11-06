@@ -200,7 +200,66 @@ export async function GET(request: Request) {
       ),
     ].join("\n");
 
-    const body = `# clients\n${clientLines}\n\n# jobs\n${jobLines}\n\n# workers\n${workerLines}\n\n# visits\n${visitLines}\n\n# assignments\n${assignmentLines}\n\n# tasks\n${taskLines}\n\n# activity_events\n${eventLines}\n`;
+    const noteLines = [
+      "id,job_id,text,author_user_id,created_at",
+      ...notes.map((n) =>
+        [
+          n.id,
+          n.jobId,
+          csvEscape(n.text),
+          n.authorUserId ?? "",
+          n.createdAt.toISOString(),
+        ].join(","),
+      ),
+    ].join("\n");
+
+    const attachmentLines = [
+      "id,job_id,note_id,original_filename,mime_type,size_bytes,created_at",
+      ...attachments.map((a) =>
+        [
+          a.id,
+          a.jobId,
+          a.noteId ?? "",
+          csvEscape(a.originalFilename),
+          csvEscape(a.mimeType),
+          String(a.sizeBytes),
+          a.createdAt.toISOString(),
+        ].join(","),
+      ),
+    ].join("\n");
+
+    const body = [
+      "# clients",
+      clientLines,
+      "",
+      "# jobs",
+      jobLines,
+      "",
+      "# workers",
+      workerLines,
+      "",
+      "# visits",
+      visitLines,
+      "",
+      "# assignments",
+      assignmentLines,
+      "",
+      "# tasks",
+      taskLines,
+      "",
+      "# activity_events",
+      eventLines,
+      "",
+      "# notes",
+      noteLines,
+      "",
+      "# attachments_manifest",
+      attachmentLines,
+      "",
+      "# backup_notes",
+      '"Photo binary files are not embedded. Restore MySQL + canopy-uploads together. Attachment IDs above match auth-gated /api/attachments/{id}."',
+      "",
+    ].join("\n");
     return new NextResponse(body, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",

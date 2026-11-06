@@ -133,10 +133,12 @@ export function NoteComposer({ jobId, onSaved }: Props) {
 
     const failed = (result.data.failed as Array<{ filename: string }> | undefined) || [];
     if (!result.ok && failed.length === 0) {
+      // Keep draft text + photo previews; clear pending; leave failed state visible.
       setError(
         (result.data.error as string) ||
-          "Save failed — your draft text is still here. Retry.",
+          "Save failed — your draft text and photos are still here. Retry.",
       );
+      setHint(null);
       return;
     }
 
@@ -145,15 +147,18 @@ export function NoteComposer({ jobId, onSaved }: Props) {
         (result.data.draftHint as string) ||
           "Some photos failed. Draft text is preserved; remove failed previews or retry.",
       );
-      // Keep draft text; drop successful uploads from previews by clearing all
-      // only when fully successful. On partial, keep previews for retry.
+      setError(null);
+      // Keep draft text; keep previews for retry. Clear only the pending spinner.
       onSaved();
       return;
     }
 
+    // Full success: clear draft, previews, pending, and any prior failed/hint state.
     for (const p of previews) URL.revokeObjectURL(p.previewUrl);
     setPreviews([]);
     setText("");
+    setError(null);
+    setHint(null);
     try {
       sessionStorage.removeItem(DRAFT_KEY(jobId));
     } catch {

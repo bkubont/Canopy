@@ -56,9 +56,9 @@ export function SettingsPanel() {
       <section className="section-block">
         <h2>Export</h2>
         <p className="muted small">
-          Owner export of clients and jobs (JSON includes note IDs and an
-          attachment manifest). Photo binaries stay on disk — see backup notes
-          below.
+          Owner export of clients, jobs, visits, assignments, tasks, activity
+          events, notes, and an attachments ID manifest (CSV and JSON). Photo
+          binaries stay on disk — see backup notes below.
         </p>
         <div className="actions">
           <a className="btn" href="/api/export?format=json">
@@ -68,6 +68,16 @@ export function SettingsPanel() {
             Download CSV
           </a>
         </div>
+      </section>
+
+      <section className="section-block">
+        <h2>Test records</h2>
+        <p className="muted small">
+          Keep acceptance and demo data clearly labeled (e.g. client names
+          starting with <code>TEST —</code>). Archive or permanently delete them
+          from Clients / Jobs when done so production folders stay clean. Do not
+          mix real customer PII into test jobs.
+        </p>
       </section>
 
       <section className="section-block">
@@ -101,18 +111,19 @@ export function SettingsPanel() {
             domain root.
           </li>
           <li>
-            Use Export JSON regularly for client/job records. Attachment binaries
-            are listed by ID in the export manifest but not embedded.
+            Export JSON/CSV weekly (and before deploys) for clients, jobs,
+            visits, assignments, tasks, events, notes, and the attachment ID
+            manifest. Photo binaries are not embedded.
           </li>
           <li>
-            Prefer Hostinger hPanel backups before major changes. Automated
-            schedule: enable Hostinger account backups if available on the plan;
-            otherwise export weekly from Settings.
+            Prefer Hostinger hPanel backups before major changes. Enable plan
+            backups when available; otherwise rely on weekly Settings export.
           </li>
           <li>
-            Restore: import clients/jobs via Export JSON (manual merge) or
-            restore MySQL +{" "}
-            <code>canopy-uploads</code> from Hostinger backup together.
+            Restore MySQL + <code>canopy-uploads</code> from the same Hostinger
+            backup point. Then verify <code>/api/health</code>, sign-in, and one
+            note photo. Full procedure:{" "}
+            <code>HOSTINGER_DEPLOYMENT.md</code>.
           </li>
         </ul>
       </section>

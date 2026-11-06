@@ -6,15 +6,16 @@ The original browser-only IndexedDB pilot is quarantined in [`legacy-pilot/`](le
 
 ## Current phase
 
-**Phase 3** — stages, tasks, dump runs, kanban, calendar badges:
+**Phase 4** — acceptance, polish, handoff (builds on Phase 3 live):
 
-- Four JobStage rows per job (Not started / In progress / Completed / Not needed)
-- Board: Ready → Estimate → Prep → Tree Work → Cleanup → Complete
-- Kanban moves with work date, visit, requestId, expected version (idempotent)
-- Past/today moves update board + events; future moves set planned stage only
-- Missing visit → Unplanned work visit; explicit stage complete/reopen
-- Dump runs (Depart / Return / Done) with brown calendar badges
-- Daily badges as activity-event projections; Start/Resume without column change
+- Failed-save UX: kanban restores prior column; note drafts preserved; pending/failed cleared
+- Owner export: clients, jobs, visits, assignments, tasks, events, notes + attachments ID manifest (CSV/JSON)
+- Operator docs: backups, restore, test-record segregation (see `HOSTINGER_DEPLOYMENT.md`)
+
+**Phase 3** (live) — stages, tasks, dump runs, kanban, calendar badges:
+
+- Four JobStage rows per job; board Ready → Estimate → Prep → Tree Work → Cleanup → Complete
+- Idempotent kanban moves; future dates planned-only; unplanned visits; dump badges
 
 ## Local setup
 
